@@ -1,0 +1,1 @@
+window.ELIFBA_IMG={};
