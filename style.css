@@ -124,3 +124,49 @@ footer { color: var(--muted); font-size: 13px; text-align: center; padding: 10px
 .rows .card img { width: 100%; max-width: none; margin: 0; }
 .rows .card .play { position: absolute; top: 50%; left: 6px; margin: -14px 0 0; }
 .rows .card > span:not(.play) { display: block; text-align: left; }
+
+.exbox { border: 2px solid var(--ink); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; background: var(--soft); }
+.exbox b { display: block; font-family: system-ui, sans-serif; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+
+/* Sprungleiste und Heftseiten */
+.jump { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 4px 0 14px; }
+.jump a { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; text-decoration: none; font-family: system-ui, sans-serif; }
+.pages { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+.pg { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 0; cursor: zoom-in; overflow: hidden; font: inherit; color: inherit; }
+.pg img { display: block; width: 100%; height: auto; aspect-ratio: 1200 / 1697; }
+.pg span { display: block; font-size: 13px; color: var(--muted); padding: 4px 0 6px; }
+.pages .part { margin: 8px 0 -6px; }
+.viewer { position: fixed; inset: 0; z-index: 20; background: #fff; overflow: auto; -webkit-overflow-scrolling: touch; }
+.viewer img { display: block; width: 200%; max-width: none; height: auto; }
+@media (min-width: 900px) { .viewer img { width: 100%; max-width: 1200px; margin: 0 auto; } }
+.viewer .close { position: fixed; top: 10px; right: 10px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--ink); color: #fff; font-size: 18px; z-index: 21; }
+
+/* Mushaf-Ansicht für Suren und Verse (wie im Diyanet-Mushaf) */
+:root { --mushaf-bg: #fbf5df; --mushaf-gold: #8a6a32; --mushaf-gold2: #c9a961; }
+.mushaf { background: var(--mushaf-bg); border: 6px double var(--mushaf-gold); box-shadow: inset 0 0 0 3px var(--mushaf-gold2); border-radius: 4px; padding: 8px; margin-bottom: 14px; }
+.mushaf .surah { background: transparent; border: 0; margin: 0 0 6px; padding: 4px 4px 8px; border-bottom: 1px solid var(--mushaf-gold2); border-radius: 0; }
+.mushaf .surah .n { border-color: var(--mushaf-gold); background: var(--mushaf-gold); color: #fff; }
+.mushaf img { display: block; width: 100%; height: auto; mix-blend-mode: multiply; }
+.rows .card { background: var(--mushaf-bg); border: 4px double var(--mushaf-gold); box-shadow: inset 0 0 0 2px var(--mushaf-gold2); border-radius: 4px; }
+.rows .card img { mix-blend-mode: multiply; }
+.rows .card .play { border-color: var(--mushaf-gold); color: var(--mushaf-gold); background: #fff; }
+.rows .card.on .play { background: var(--mushaf-gold); color: #fff; }
+
+/* Play-Knopf nie über der Schrift: eigener Streifen oberhalb des Bildes */
+.cards .card { padding-top: 34px; }
+.cards .card .play { top: 4px; left: 6px; width: 26px; height: 26px; }
+
+/* Heft-Abschnitte */
+.toc { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 0 16px; }
+.toc summary { cursor: pointer; font-weight: 600; }
+.toc ol { margin: 8px 0 4px; padding-left: 1.4em; }
+.toc li { margin: 4px 0; }
+.toc a { text-decoration: none; }
+.toc small, .hs h3 small { color: var(--muted); font-weight: 400; font-size: 13px; white-space: nowrap; }
+.hs { margin: 0 0 22px; scroll-margin-top: 60px; }
+.hs h3 { font-size: 17px; line-height: 1.35; margin: 0 0 8px; }
+.hs .tag { display: inline-block; font: 700 11px/1 system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--ink); border-radius: 999px; padding: 3px 8px; margin-right: 8px; vertical-align: 2px; }
+.hs.auf .tag { background: var(--ink); color: #fff; }
+.hs .pg { display: block; width: 100%; margin: 0 0 8px; border: 0; border-radius: 0; cursor: zoom-in; }
+.hs .pg img { aspect-ratio: auto; }
+.hs.hl { outline: 3px solid var(--ink); outline-offset: 6px; border-radius: 4px; }
