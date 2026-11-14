@@ -77,6 +77,7 @@
     var title = (ex.name ? ex.name + ' ' : 'Sure ') + ex.s + ':' + ex.a, has = !!ex.aud;
     return '<button class="card' + (has ? '' : ' still') + '" data-k="' + kind + '" data-i="' + i + '"' + (has ? ' aria-label="' + esc(title) + ' anhören"' : ' aria-label="' + esc(title) + '" disabled') + '>' +
       (has ? '<span class="play" aria-hidden="true">▶</span>' : '') +
+      '<span class="ref">' + esc((ex.aud && ex.aud.k) || (ex.s + ':' + ex.a)) + '</span>' +
       '<img loading="lazy" decoding="async" src="' + src(ex.img) + '" width="' + ex.w + '" height="' + ex.h + '" alt="' + esc(title) + '"' +
       (kind === 'u' ? ' style="width:' + Math.min(100, Math.round(ex.w / 11)) + '%"' : '') + '></button>';
   }
@@ -148,6 +149,8 @@
     });
   }
 
+  var SURAH_AR = { 105: 'سُورَةُ الْفِيلِ', 106: 'سُورَةُ قُرَيْشٍ', 107: 'سُورَةُ الْمَاعُونِ', 108: 'سُورَةُ الْكَوْثَرِ', 109: 'سُورَةُ الْكَافِرُونَ',
+    110: 'سُورَةُ النَّصْرِ', 111: 'سُورَةُ الْمَسَدِ', 112: 'سُورَةُ الْإِخْلَاصِ', 113: 'سُورَةُ الْفَلَقِ', 114: 'سُورَةُ النَّاسِ' };
   /* ---------- Suren (Lektion 36) ---------- */
   function surahBlock() {
     return '<section id="suren"><h2>Die letzten zehn Suren · anhören</h2><p class="hint">Tipp auf eine Sure, dann hörst du sie ganz (al-Ḥuṣarī). Den Text findest du weiter unten bei den Heftseiten.</p><div class="surahs">' +
@@ -155,8 +158,27 @@
         return '<button class="surah" data-i="' + i + '"><span class="n">' + s[0] + '</span><span class="sn"><b>' + esc(s[1]) + '</b><small>Heft S. ' + s[2] + '</small></span><span class="play" aria-hidden="true">▶</span></button>';
       }).join('') + '</div></section>';
   }
+  function mushafPart(img) {
+    var found = null;
+    (D.lessons || []).forEach(function (L) { (L.sections || []).forEach(function (s) { s.parts.forEach(function (p) { if (p.img === img) found = p; }); }); });
+    return found;
+  }
+  function bindMushaf() {
+    app.querySelectorAll('.surah-play[data-m]').forEach(function (el) {
+      el.onclick = function () {
+        var p = mushafPart(el.dataset.m), urls = [];
+        if (p.ganz) urls = [SURAH + pad(p.mushaf, 3) + '.mp3'];
+        else for (var v = p.von; v <= p.bis; v++) urls.push(ayahUrl(p.mushaf, v));
+        play(urls, 'Sure ' + p.mushaf + (p.ganz ? '' : ', Vers ' + p.von + '–' + p.bis), (p.ganz ? 'Ganze Sure' : 'Vers für Vers') + ' · Maḥmūd Khalīl al-Ḥuṣarī', el);
+      };
+    });
+    app.querySelectorAll('.vmark').forEach(function (el) {
+      el.onclick = function () { var p = mushafPart(el.dataset.m), v = +el.dataset.v; play([ayahUrl(p.mushaf, v)], 'Sure ' + p.mushaf + ':' + v, 'Ganzer Vers · Maḥmūd Khalīl al-Ḥuṣarī', el); };
+    });
+  }
   function bindSurahs() {
-    app.querySelectorAll('.surah').forEach(function (el) {
+    bindMushaf();
+    app.querySelectorAll('.surah, .surah-play:not([data-m])').forEach(function (el) {
       el.onclick = function () { var s = D.surahs[+el.dataset.i]; play([SURAH + pad(s[0], 3) + '.mp3'], 'Sure ' + s[1], 'Ganze Sure · Maḥmūd Khalīl al-Ḥuṣarī', el); };
     });
   }
@@ -187,12 +209,73 @@
           s.parts.map(function (p) {
             var pid = '';
             if (!seenPage[p.page]) { seenPage[p.page] = 1; pid = ' id="s-' + p.page + '"'; }
+            if (p.img && ('mushaf' in p)) {
+              var head = '';
+              if (p.mushaf) {
+                var nm = SURAH_AR[p.mushaf] || ('سُورَةُ ' + p.sname);
+                head = '<div class="mh"><span class="quran">' + esc(nm) + '</span><span class="mref">' + (p.ganz ? 'Sure ' + p.mushaf : 'Sure ' + p.mushaf + ', Vers ' + p.von + (p.bis > p.von ? '–' + p.bis : '')) + '</span>' +
+                  '<button class="surah-play" data-m="' + p.img + '"><span class="play" aria-hidden="true">▶</span> ' + (p.ganz ? 'ganze Sure anhören' : 'Abschnitt anhören') + '</button></div>';
+              }
+              var hot = (p.marks || []).map(function (m, k) {
+                return '<button class="vmark" data-m="' + p.img + '" data-v="' + (p.von + k) + '" style="left:' + (m[0] * 100) + '%;top:' + (m[1] * 100) + '%;width:' + (m[2] * 360) + '%" aria-label="Vers ' + (p.von + k) + ' anhören"></button>';
+              }).join('');
+              return '<div class="mushafw"' + pid + '>' + head + '<div class="mimg"><img loading="lazy" decoding="async" alt="Sure" width="' + p.w + '" height="' + p.h + '" src="' + src(p.img) + '">' + hot + '</div>' +
+                (p.marks ? '<p class="mtip">Tipp auf ein Verszeichen, dann hörst du genau diesen Vers.</p>' : '') + '</div>';
+            }
             if (p.img) return '<button class="pg"' + pid + '><img loading="lazy" decoding="async" alt="Heft Seite ' + p.page + '" width="' + p.w + '" height="' + p.h + '" src="' + src(p.img) + '"></button>';
             if (p.tiles) return '<div class="tiles"' + pid + '>' + p.tiles.map(function (t) { return '<button class="pg tile"><img loading="lazy" decoding="async" alt="' + esc(t.letters) + '" width="' + t.w + '" height="' + t.h + '" src="' + src(t.img) + '"></button>'; }).join('') + '</div>';
             var list = p.kind === 'u' ? L.practice : L.examples;
             return '<div' + pid + ' class="' + (p.kind === 'u' ? 'rows' : 'cards') + '">' + p.cards.map(function (ci) { return cardHtml(list[ci], ci, p.kind); }).join('') + '</div>';
-          }).join('') + '</article>';
+          }).join('') + (/Wiederholung/.test(s.title) && /Regeln/.test(s.title) ? recapBlock(L) : '') + '</article>';
       }).join('') + '</section>';
+  }
+
+  /* ---------- Wiederholung: jede Regel zum Anhören ---------- */
+  function recapRules(L) {
+    var out = [], seen = {};
+    D.lessons.forEach(function (X) {
+      if (X.id > L.id || !X.rules) return;
+      X.rules.forEach(function (k) {
+        if (seen[k] || !D.rules[k]) return; seen[k] = 1;
+        var ex = null, all = X.examples.concat(X.practice);
+        // nur ein Beispiel, das im Heft genau mit dieser Regel beschriftet ist; bei Lektionen mit einer einzigen Regel das erste
+        all.forEach(function (e) { if (!ex && e.aud && e.rule === k) ex = e; });
+        if (!ex && X.rules.length === 1) all.forEach(function (e) { if (!ex && e.aud && !e.rule) ex = e; });
+        out.push({ k: k, r: D.rules[k], les: X, ex: ex });
+      });
+    });
+    return out;
+  }
+  function recapBlock(L) {
+    var rs = recapRules(L);
+    if (!rs.length) return '';
+    return '<div class="recap"><h4>Jede Regel zum Anhören</h4><p class="hint">„Erklärung“ liest dir die Regel auf Deutsch vor (Stimme deines Geräts). „Beispiel“ spielt eine echte Aufnahme aus dem Qur’ān.</p>' +
+      rs.map(function (x, i) {
+        return '<div class="rrule" style="--c:' + x.r.color + '"><div class="rh"><b class="rk" style="--c:' + x.r.color + '">' + esc(x.k) + '</b><span>' + esc(x.r.name) + '</span></div>' +
+          '<p>' + txt(x.r.short || '') + '</p><div class="rb">' +
+          ('speechSynthesis' in window ? '<button class="rsay" data-i="' + i + '">🔊 Erklärung</button>' : '') +
+          (x.ex ? '<button class="rex" data-i="' + i + '"><span class="play" aria-hidden="true">▶</span> Beispiel ' + esc(x.ex.aud.k) + '</button>' : '') +
+          '<a class="rgo" href="l/' + x.les.id + '/">Lektion ' + x.les.id + '</a></div></div>';
+      }).join('') + '</div>';
+  }
+  function bindRecap(L) {
+    var rs = recapRules(L);
+    function clean(t) { return (t || '').replace(/[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, ' ').replace(/\s+/g, ' '); }
+    app.querySelectorAll('.rsay').forEach(function (el) {
+      el.onclick = function () {
+        var x = rs[+el.dataset.i], sy = window.speechSynthesis;
+        if (sy.speaking && el.classList.contains('on')) { sy.cancel(); el.classList.remove('on'); return; }
+        sy.cancel(); audio.pause();
+        app.querySelectorAll('.rsay.on').forEach(function (o) { o.classList.remove('on'); });
+        var u = new SpeechSynthesisUtterance(clean(x.r.name + '. ' + (x.r.short || '') + '. ' + (x.les.when ? 'Wann? ' + x.les.when + ' ' : '') + (x.les.how ? 'Wie? ' + x.les.how : '')));
+        u.lang = 'de-DE'; u.rate = 0.95;
+        u.onend = u.onerror = function () { el.classList.remove('on'); };
+        el.classList.add('on'); sy.speak(u);
+      };
+    });
+    app.querySelectorAll('.rex').forEach(function (el) {
+      el.onclick = function () { if (window.speechSynthesis) window.speechSynthesis.cancel(); playCard(rs[+el.dataset.i].ex, el); };
+    });
   }
 
   function bindZoom(root) {
@@ -205,7 +288,7 @@
       };
     });
   }
-  function scrollToId(id) { var el = document.getElementById(id); if (!el) return; el.scrollIntoView({ block: 'start' }); window.scrollBy(0, -70); }
+  function scrollToId(id) { var el = document.getElementById(id); if (!el) return; var t = document.querySelector('.top'); window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - (t ? t.offsetHeight : 0) - 12); }
 
   /* ---------- Lektionsseite ---------- */
   function lessonPage(L) {
@@ -245,12 +328,30 @@
       var a = ev.target.closest('a[data-go]'); if (!a) return; ev.preventDefault(); scrollToId(a.dataset.go);
     });
     bindZoom(app);
-    bindCards(L);
+    bindCards(L); bindRecap(L);
     if (L.special === 'letters') bindLetters(L);
-    if (L.special === 'surahs') bindSurahs();
+    bindSurahs();
+    navBar(L);
     bindVerses(L);
     exercise();
     document.getElementById('done').onchange = function (e) { setDone(L.id, e.target.checked); };
+  }
+
+  /* ---------- Feste Leiste oben: Lektion wechseln, Abschnitt wählen ---------- */
+  function navBar(L) {
+    var top = document.querySelector('.top'); if (!top) return;
+    var idx = D.lessons.indexOf(L), prev = D.lessons[idx - 1], next = D.lessons[idx + 1];
+    var opt = D.lessons.map(function (x) { return '<option value="' + x.id + '"' + (x === L ? ' selected' : '') + '>' + (x.id ? 'Lektion ' + x.id : 'Einleitung') + ' · ' + esc(x.title) + '</option>'; }).join('');
+    var secs = (L.sections || []).map(function (s, i) { var id = s.anchor || 'abschnitt-' + (i + 1); return '<option value="' + id + '">S. ' + s.page + ' · ' + (s.kind === 'aufgabe' ? 'Aufgabe: ' : '') + esc(s.title) + '</option>'; }).join('');
+    var bar = document.createElement('div'); bar.className = 'nav';
+    bar.innerHTML = '<a class="nb" href="' + (prev ? 'l/' + prev.id + '/' : './') + '" aria-label="Vorige Lektion">‹</a>' +
+      '<select id="nav-l" aria-label="Lektion wählen">' + opt + '</select>' +
+      '<a class="nb" href="' + (next ? 'l/' + next.id + '/' : './') + '" aria-label="Nächste Lektion">›</a>' +
+      (secs ? '<select id="nav-s" aria-label="Abschnitt wählen"><option value="">Zu Aufgabe oder Erklärung springen …</option>' + secs + '</select>' : '');
+    top.appendChild(bar);
+    document.getElementById('nav-l').onchange = function (e) { location.href = 'l/' + e.target.value + '/'; };
+    var ns = document.getElementById('nav-s');
+    if (ns) ns.onchange = function (e) { if (e.target.value) { scrollToId(e.target.value); var el = document.getElementById(e.target.value); if (el) { el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 2500); } e.target.value = ''; } };
   }
 
   /* ---------- Sprung zu einer Übung (QR-Code neben der Aufgabe im Heft) ---------- */
