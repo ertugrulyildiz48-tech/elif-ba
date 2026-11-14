@@ -78,8 +78,8 @@
     return '<button class="card' + (has ? '' : ' still') + '" data-k="' + kind + '" data-i="' + i + '"' + (has ? ' aria-label="' + esc(title) + ' anhören"' : ' aria-label="' + esc(title) + '" disabled') + '>' +
       (has ? '<span class="play" aria-hidden="true">▶</span>' : '') +
       '<span class="ref">' + esc((ex.aud && ex.aud.k) || (ex.s + ':' + ex.a)) + '</span>' +
-      '<img loading="lazy" decoding="async" src="' + src(ex.img) + '" width="' + ex.w + '" height="' + ex.h + '" alt="' + esc(title) + '"' +
-      (kind === 'u' ? ' style="width:' + Math.min(100, Math.round(ex.w / 11)) + '%"' : '') + '></button>';
+      '<img src="' + src(ex.img) + '" width="' + ex.w + '" height="' + ex.h + '" alt="' + esc(title) + '"' +
+      ' style="width:calc(' + (ex.w / ((ex.fs >= 12 ? ex.fs : (kind === 'u' ? 19 : 24)) * 4.1667)).toFixed(2) + ' * var(--apx))"></button>';
   }
   function bindCards(L) {
     app.querySelectorAll('.card[data-k]').forEach(function (el) {
@@ -117,7 +117,7 @@
     }).join('');
     return '<section id="buchstaben"><h2>Woher kommen die Buchstaben? · Makhārij</h2>' +
       '<p>Jeder Buchstabe hat seinen festen Austrittsort. Es gibt fünf Bereiche. Die Farbe ist dieselbe wie im Heft. Tipp auf einen Buchstaben: Du hörst ihn und siehst darunter, wo er entsteht und wo die Zunge drückt.</p>' +
-      (head ? '<button class="pg head"><img loading="lazy" decoding="async" alt="Kopf im Schnitt mit den Austrittsorten" width="' + head.w + '" height="' + head.h + '" src="' + src(head.img) + '"><span>Bild antippen zum Vergrößern</span></button>' : '') +
+      (head ? '<button class="pg head"><img alt="Kopf im Schnitt mit den Austrittsorten" width="' + head.w + '" height="' + head.h + '" src="' + src(head.img) + '"><span>Bild antippen zum Vergrößern</span></button>' : '') +
       '<div class="regions">' + regions + '</div></section>' +
       '<section id="alphabet"><h2>Das Alphabet · antippen und anhören</h2>' +
       '<p class="hint">Der farbige Strich oben zeigt den Bereich. Fett sind die dicken Buchstaben (خ ص ض غ ط ق ظ).</p>' +
@@ -205,7 +205,7 @@
     return '<section id="heft"><h2>Aus dem Heft · alle Erklärungen und Aufgaben</h2><p class="hint">Alles in derselben Reihenfolge wie im Heft. Bilder antippen zum Vergrößern. Karten mit ▶ kannst du anhören.</p>' + toc +
       L.sections.map(function (s, i) {
         var id = s.anchor || 'abschnitt-' + (i + 1), auf = s.kind === 'aufgabe';
-        return '<article class="hs ' + (auf ? 'auf' : 'erk') + '" id="' + id + '"><header><span class="tag">' + (auf ? 'Aufgabe' : 'Erklärung') + '</span><small>Heft S. ' + s.page + '</small></header><h3>' + esc(s.title) + '</h3>' +
+        return '<article class="hs ' + (auf ? 'auf' : 'erk') + '" id="' + id + '"><header><span class="tag">' + (auf ? 'Aufgabe' : 'Erklärung') + '</span><small>Heft S. ' + s.page + '</small></header><h3>' + esc(s.title) + '</h3>' + secTools(s, i) +
           s.parts.map(function (p) {
             var pid = '';
             if (!seenPage[p.page]) { seenPage[p.page] = 1; pid = ' id="s-' + p.page + '"'; }
@@ -219,15 +219,33 @@
               var hot = (p.marks || []).map(function (m, k) {
                 return '<button class="vmark" data-m="' + p.img + '" data-v="' + (p.von + k) + '" style="left:' + (m[0] * 100) + '%;top:' + (m[1] * 100) + '%;width:' + (m[2] * 360) + '%" aria-label="Vers ' + (p.von + k) + ' anhören"></button>';
               }).join('');
-              return '<div class="mushafw"' + pid + '>' + head + '<div class="mimg"><img loading="lazy" decoding="async" alt="Sure" width="' + p.w + '" height="' + p.h + '" src="' + src(p.img) + '">' + hot + '</div>' +
+              return '<div class="mushafw"' + pid + '>' + head + '<div class="mimg"><img alt="Sure" width="' + p.w + '" height="' + p.h + '" src="' + src(p.img) + '">' + hot + '</div>' +
                 (p.marks ? '<p class="mtip">Tipp auf ein Verszeichen, dann hörst du genau diesen Vers.</p>' : '') + '</div>';
             }
-            if (p.img) return '<button class="pg"' + pid + '><img loading="lazy" decoding="async" alt="Heft Seite ' + p.page + '" width="' + p.w + '" height="' + p.h + '" src="' + src(p.img) + '"></button>';
-            if (p.tiles) return '<div class="tiles"' + pid + '>' + p.tiles.map(function (t) { return '<button class="pg tile"><img loading="lazy" decoding="async" alt="' + esc(t.letters) + '" width="' + t.w + '" height="' + t.h + '" src="' + src(t.img) + '"></button>'; }).join('') + '</div>';
+            if (p.img && p.plain) return '<div class="ptext"' + pid + '>' + p.plain.filter(function (x) { return x.replace(/\s/g, '') !== s.title.replace(/\s/g, ''); }).map(function (x) { return '<p>' + txt(x) + '</p>'; }).join('') + '</div>';
+            if (p.img) return '<button class="pg"' + pid + '><img alt="Heft Seite ' + p.page + '" width="' + p.w + '" height="' + p.h + '" src="' + src(p.img) + '"></button>';
+            if (p.tiles) return '<div class="tiles"' + pid + '>' + p.tiles.map(function (t) { return '<button class="pg tile"><img alt="' + esc(t.letters) + '" width="' + t.w + '" height="' + t.h + '" src="' + src(t.img) + '"></button>'; }).join('') + '</div>';
             var list = p.kind === 'u' ? L.practice : L.examples;
             return '<div' + pid + ' class="' + (p.kind === 'u' ? 'rows' : 'cards') + '">' + p.cards.map(function (ci) { return cardHtml(list[ci], ci, p.kind); }).join('') + '</div>';
           }).join('') + (/Wiederholung/.test(s.title) && /Regeln/.test(s.title) ? recapBlock(L) : '') + '</article>';
       }).join('') + '</section>';
+  }
+
+  /* ---------- Erklärung zum Abschnitt: anhören oder lesen ---------- */
+  function secText(s) { return (s.text || []).filter(function (t) { return t !== s.title && t.replace(/\s/g, '') !== s.title.replace(/\s/g, ''); }); }
+  function secTools(s, i) {
+    var t = secText(s); if (!t.length) return '';
+    return '<div class="stools">' + ('speechSynthesis' in window ? '<button class="say" data-sec="' + i + '">🔊 Anhören</button>' : '') +
+      '<button class="readbtn" data-sec="' + i + '" aria-expanded="false">📖 Text lesen</button></div>' +
+      '<div class="stext" id="stext-' + i + '" hidden>' + t.map(function (x) { return '<p>' + txt(x) + '</p>'; }).join('') + '</div>';
+  }
+  function bindSecTools(L) {
+    app.querySelectorAll('.say[data-sec]').forEach(function (el) {
+      el.onclick = function () { var s = L.sections[+el.dataset.sec]; say(s.title + '. ' + secText(s).join(' '), el); };
+    });
+    app.querySelectorAll('.readbtn').forEach(function (el) {
+      el.onclick = function () { var b = document.getElementById('stext-' + el.dataset.sec); b.hidden = !b.hidden; el.classList.toggle('on', !b.hidden); el.setAttribute('aria-expanded', String(!b.hidden)); };
+    });
   }
 
   /* ---------- Wiederholung: jede Regel zum Anhören ---------- */
@@ -263,14 +281,8 @@
     function clean(t) { return (t || '').replace(/[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, ' ').replace(/\s+/g, ' '); }
     app.querySelectorAll('.rsay').forEach(function (el) {
       el.onclick = function () {
-        var x = rs[+el.dataset.i], sy = window.speechSynthesis;
-        if (sy.speaking && el.classList.contains('on')) { sy.cancel(); el.classList.remove('on'); return; }
-        sy.cancel(); audio.pause();
-        app.querySelectorAll('.rsay.on').forEach(function (o) { o.classList.remove('on'); });
-        var u = new SpeechSynthesisUtterance(clean(x.r.name + '. ' + (x.r.short || '') + '. ' + (x.les.when ? 'Wann? ' + x.les.when + ' ' : '') + (x.les.how ? 'Wie? ' + x.les.how : '')));
-        u.lang = 'de-DE'; u.rate = 0.95;
-        u.onend = u.onerror = function () { el.classList.remove('on'); };
-        el.classList.add('on'); sy.speak(u);
+        var x = rs[+el.dataset.i];
+        say(x.r.name + '. ' + (x.r.short || '') + '. ' + (x.les.when ? 'Wann? ' + x.les.when + ' ' : '') + (x.les.how ? 'Wie? ' + x.les.how : ''), el);
       };
     });
     app.querySelectorAll('.rex').forEach(function (el) {
@@ -281,20 +293,121 @@
   function bindZoom(root) {
     [].forEach.call(root.querySelectorAll('.pg'), function (b) {
       b.onclick = function () {
-        var v = document.createElement('div'); v.className = 'viewer';
-        v.innerHTML = '<button class="close" aria-label="Schließen">✕</button><img alt="" src="' + b.querySelector('img').src + '">';
-        v.querySelector('.close').onclick = function () { v.remove(); document.body.style.overflow = ''; };
+        var im = b.querySelector('img'), z = 2;
+        var v = document.createElement('div'); v.className = 'viewer' + (b.classList.contains('tile') || b.classList.contains('head') ? ' nofilter' : '');
+        v.innerHTML = '<div class="vbar"><button class="vz" data-d="-1" aria-label="Kleiner">−</button><button class="vz" data-d="1" aria-label="Größer">+</button><button class="close">Schließen ✕</button></div><div class="vscroll"><img alt="" src="' + im.src + '"></div>';
+        var vi = v.querySelector('img');
+        function set() { vi.style.width = (z * 100) + '%'; }
+        set();
+        v.onclick = function (ev) {
+          var zb = ev.target.closest('.vz');
+          if (zb) { z = Math.max(1, Math.min(5, z + (+zb.dataset.d) * 0.75)); set(); }
+          else if (ev.target.closest('.close')) { v.remove(); document.body.style.overflow = ''; }
+        };
         document.body.appendChild(v); document.body.style.overflow = 'hidden';
       };
     });
   }
-  function scrollToId(id) { var el = document.getElementById(id); if (!el) return; var t = document.querySelector('.top'); window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - (t ? t.offsetHeight : 0) - 12); }
+  var STEPS = null;
+  function scrollToId(id) {
+    var el = document.getElementById(id); if (!el) return;
+    var st = el.closest && el.closest('.step');
+    if (STEPS && st) { STEPS.show(+st.dataset.step, true); if (el === st || el.classList.contains('hs')) { window.scrollTo(0, 0); return; } }
+    var t = document.querySelector('.top'); window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - (t ? t.offsetHeight : 0) - 12);
+  }
+
+  /* ---------- Vorlesen (Stimme des Geräts) ---------- */
+  function say(text, el) {
+    var sy = window.speechSynthesis; if (!sy) return;
+    if (sy.speaking && el.classList.contains('on')) { sy.cancel(); el.classList.remove('on'); return; }
+    sy.cancel(); audio.pause();
+    [].forEach.call(document.querySelectorAll('.say.on, .rsay.on'), function (o) { o.classList.remove('on'); });
+    var u = new SpeechSynthesisUtterance((text || '').replace(/…/g, ' ').replace(/[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, ' ').replace(/\s+/g, ' '));
+    u.lang = 'de-DE'; u.rate = 0.95;
+    var vs = (sy.getVoices() || []).filter(function (v) { return /^de/i.test(v.lang); });
+    var male = vs.filter(function (v) { return /male|männlich|martin|markus|yannick|stefan|conrad|hans|daniel|viktor|klaus|killian|christoph|#male/i.test(v.name) && !/female|weiblich/i.test(v.name); })[0];
+    if (male) u.voice = male; else if (vs[0]) u.voice = vs[0];
+    u.onend = u.onerror = function () { el.classList.remove('on'); };
+    el.classList.add('on'); sy.speak(u);
+  }
+  if (window.speechSynthesis && window.speechSynthesis.getVoices) window.speechSynthesis.getVoices();
+
+  /* ---------- Schritt für Schritt: ein Abschnitt pro Bildschirm ---------- */
+  function makeSteps(L, next) {
+    var groups = [], first = document.createElement('div');
+    first.id = 'start';
+    var lead = [].filter.call(app.children, function (c) { return c.classList.contains('stale') || c.classList.contains('lhead') || c.id === 'erklaerung' || c.id === 'anwenden'; });
+    app.insertBefore(first, lead[0]); lead.forEach(function (c) { first.appendChild(c); });
+    groups.push({ el: first, label: 'Erklärung' });
+    var names = { buchstaben: 'Woher die Buchstaben kommen', alphabet: 'Das Alphabet', hoeren: 'Hören', suren: 'Die Suren anhören' };
+    [].forEach.call(app.children, function (c) { if (names[c.id]) groups.push({ el: c, label: names[c.id] }); });
+    [].forEach.call(app.querySelectorAll('#heft > article.hs'), function (a) {
+      var h3 = a.querySelector('h3'); groups.push({ el: a, label: (a.classList.contains('auf') ? 'Aufgabe: ' : '') + (h3 ? h3.textContent : 'Abschnitt') });
+    });
+    var end = document.createElement('div'); end.id = 'fertig';
+    end.innerHTML = '<h2>Geschafft</h2><p>Du bist am Ende dieser Lektion. Wenn du alles sicher kannst, hak sie ab.</p>';
+    [].filter.call(app.children, function (c) { return c.classList.contains('done') || c.classList.contains('pager') || c.tagName === 'FOOTER'; }).forEach(function (c) { end.appendChild(c); });
+    app.appendChild(end); groups.push({ el: end, label: 'Fertig' });
+    groups.forEach(function (g, i) { g.el.classList.add('step'); g.el.dataset.step = i; });
+    document.body.classList.add('stepmode');
+    var bar = document.createElement('div'); bar.className = 'stepbar';
+    bar.innerHTML = '<button id="st-prev" aria-label="Zurück">‹ Zurück</button><button id="st-pos" aria-label="Alle Schritte zeigen"></button><button id="st-next">Weiter ›</button>';
+    document.body.appendChild(bar);
+    var list = document.createElement('div'); list.className = 'steplist'; list.hidden = true;
+    list.innerHTML = '<div class="sl-in"><b>Alle Schritte dieser Lektion</b><ol>' + groups.map(function (g, i) { return '<li><button data-s="' + i + '">' + esc(g.label) + '</button></li>'; }).join('') + '</ol><button class="sl-x">Schließen</button></div>';
+    document.body.appendChild(list);
+    var cur = -1, key = 'elifba-step-' + L.id;
+    var api = {
+      groups: groups,
+      show: function (i, quiet) {
+        i = Math.max(0, Math.min(groups.length - 1, i)); if (i === cur) return;
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        groups.forEach(function (g, k) { g.el.classList.toggle('cur', k === i); });
+        cur = i;
+        document.getElementById('st-pos').textContent = (i + 1) + ' / ' + groups.length;
+        document.getElementById('st-prev').disabled = i === 0;
+        var nb = document.getElementById('st-next');
+        nb.textContent = i === groups.length - 1 ? (next ? 'Lektion ' + next.id + ' ›' : 'Übersicht ›') : 'Weiter ›';
+        [].forEach.call(list.querySelectorAll('button[data-s]'), function (b) { b.classList.toggle('on', +b.dataset.s === i); });
+        try { sessionStorage.setItem(key, i); } catch (e) {}
+        if (!quiet) window.scrollTo(0, 0);
+      },
+      go: function (d) {
+        if (d > 0 && cur === groups.length - 1) { location.href = next ? 'l/' + next.id + '/' : './'; return; }
+        api.show(cur + d);
+      }
+    };
+    document.getElementById('st-prev').onclick = function () { api.go(-1); };
+    document.getElementById('st-next').onclick = function () { api.go(1); };
+    document.getElementById('st-pos').onclick = function () { list.hidden = false; };
+    list.onclick = function (ev) {
+      var b = ev.target.closest('button[data-s]');
+      if (b) { api.show(+b.dataset.s); list.hidden = true; }
+      else if (ev.target === list || ev.target.classList.contains('sl-x')) list.hidden = true;
+    };
+    // Wischen: nach links = weiter, nach rechts = zurück
+    var sx = 0, sy = 0, st = 0;
+    app.addEventListener('touchstart', function (e) { if (e.touches.length !== 1) { st = 0; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now(); }, { passive: true });
+    app.addEventListener('touchend', function (e) {
+      if (!st) return; var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Date.now() - st < 700 && Math.abs(dx) > 80 && Math.abs(dy) < 45) api.go(dx < 0 ? 1 : -1);
+      st = 0;
+    }, { passive: true });
+    document.addEventListener('keydown', function (e) {
+      if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+      if (e.key === 'ArrowRight') api.go(1); else if (e.key === 'ArrowLeft') api.go(-1);
+    });
+    var startAt = 0;
+    try { if (!location.hash) startAt = +sessionStorage.getItem(key) || 0; } catch (e) {}
+    api.show(startAt, true);
+    return api;
+  }
 
   /* ---------- Lektionsseite ---------- */
   function lessonPage(L) {
     var idx = D.lessons.indexOf(L), prev = D.lessons[idx - 1], next = D.lessons[idx + 1];
     var label = L.id === 0 ? 'Einleitung' : 'Lektion ' + L.id;
-    var rc = (L.rules && L.rules.length && D.rules[L.rules[0]]) ? D.rules[L.rules[0]].color : '#111';
+    var rc = (L.rules && L.rules.length && D.rules[L.rules[0]]) ? D.rules[L.rules[0]].color : 'var(--ink)';
     var h = '';
     if (window.ELIFBA_IMG_V !== D.version) {
       h += '<div class="stale"><b>Die Bilder dieser Seite fehlen oder sind veraltet.</b> Beim Hochladen auf GitHub muss auch der Ordner „l“ mit hochgeladen werden. Danach die Seite neu laden.</div>';
@@ -302,7 +415,7 @@
     h += '<div class="lhead"><span class="ar">' + L.ar + '</span><h1>' + esc(L.title) + '</h1>' +
       '<div class="meta">' + label + ' · Heft S. ' + L.pages[0] + (L.pages[1] !== L.pages[0] ? '–' + L.pages[1] : '') + '</div>' + chips(L.rules) + '</div>';
     h += '<nav class="jump" id="jump"></nav>';
-    h += '<section id="erklaerung"><h2>Kurz erklärt</h2>' + L.intro.map(function (p) { return '<p>' + txt(p) + '</p>'; }).join('');
+    h += '<section id="erklaerung"><h2>Kurz erklärt</h2>' + ('speechSynthesis' in window ? '<button class="say" id="say-intro">🔊 Erklärung vorlesen</button>' : '') + L.intro.map(function (p) { return '<p>' + txt(p) + '</p>'; }).join('');
     if (L.when || L.how) h += '<dl class="kv">' + (L.when ? '<dt>Wann?</dt><dd>' + txt(L.when) + '</dd>' : '') + (L.how ? '<dt>Wie?</dt><dd>' + txt(L.how) + '</dd>' : '') + '</dl>';
     h += '</section>';
     if (L.special === 'letters') h += lettersBlock(L);
@@ -328,9 +441,14 @@
       var a = ev.target.closest('a[data-go]'); if (!a) return; ev.preventDefault(); scrollToId(a.dataset.go);
     });
     bindZoom(app);
-    bindCards(L); bindRecap(L);
+    bindCards(L); bindRecap(L); bindSecTools(L);
     if (L.special === 'letters') bindLetters(L);
     bindSurahs();
+    var si = document.getElementById('say-intro');
+    if (si) si.onclick = function () {
+      say(L.title + '. ' + L.intro.join(' ') + (L.when ? ' Wann? ' + L.when : '') + (L.how ? ' Wie? ' + L.how : '') + (L.steps ? ' So wendest du es an. ' + L.steps.join(' ') : '') + (L.mistake ? ' Typischer Fehler. ' + L.mistake : ''), si);
+    };
+    STEPS = makeSteps(L, next);
     navBar(L);
     bindVerses(L);
     exercise();
@@ -342,16 +460,20 @@
     var top = document.querySelector('.top'); if (!top) return;
     var idx = D.lessons.indexOf(L), prev = D.lessons[idx - 1], next = D.lessons[idx + 1];
     var opt = D.lessons.map(function (x) { return '<option value="' + x.id + '"' + (x === L ? ' selected' : '') + '>' + (x.id ? 'Lektion ' + x.id : 'Einleitung') + ' · ' + esc(x.title) + '</option>'; }).join('');
-    var secs = (L.sections || []).map(function (s, i) { var id = s.anchor || 'abschnitt-' + (i + 1); return '<option value="' + id + '">S. ' + s.page + ' · ' + (s.kind === 'aufgabe' ? 'Aufgabe: ' : '') + esc(s.title) + '</option>'; }).join('');
-    var bar = document.createElement('div'); bar.className = 'nav';
+    var secs = STEPS ? STEPS.groups.map(function (g, i) { return '<option value="' + i + '">' + (i + 1) + ' · ' + esc(g.label) + '</option>'; }).join('') : '';
+    var tg = document.createElement('button'); tg.className = 'navtoggle'; tg.setAttribute('aria-expanded', 'false');
+    tg.innerHTML = '<span class="nt-l">' + (L.id ? 'Lektion ' + L.id : 'Einleitung') + '</span><span class="nt-i" aria-hidden="true">▾</span>';
+    top.appendChild(tg);
+    var bar = document.createElement('div'); bar.className = 'nav'; bar.hidden = true;
     bar.innerHTML = '<a class="nb" href="' + (prev ? 'l/' + prev.id + '/' : './') + '" aria-label="Vorige Lektion">‹</a>' +
       '<select id="nav-l" aria-label="Lektion wählen">' + opt + '</select>' +
       '<a class="nb" href="' + (next ? 'l/' + next.id + '/' : './') + '" aria-label="Nächste Lektion">›</a>' +
-      (secs ? '<select id="nav-s" aria-label="Abschnitt wählen"><option value="">Zu Aufgabe oder Erklärung springen …</option>' + secs + '</select>' : '');
+      (secs ? '<select id="nav-s" aria-label="Schritt wählen"><option value="">Zu einem Schritt springen …</option>' + secs + '</select>' : '');
     top.appendChild(bar);
+    tg.onclick = function () { bar.hidden = !bar.hidden; tg.setAttribute('aria-expanded', String(!bar.hidden)); tg.classList.toggle('open', !bar.hidden); };
     document.getElementById('nav-l').onchange = function (e) { location.href = 'l/' + e.target.value + '/'; };
     var ns = document.getElementById('nav-s');
-    if (ns) ns.onchange = function (e) { if (e.target.value) { scrollToId(e.target.value); var el = document.getElementById(e.target.value); if (el) { el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 2500); } e.target.value = ''; } };
+    if (ns) ns.onchange = function (e) { if (e.target.value !== '') { STEPS.show(+e.target.value); e.target.value = ''; bar.hidden = true; tg.classList.remove('open'); tg.setAttribute('aria-expanded', 'false'); } };
   }
 
   /* ---------- Sprung zu einer Übung (QR-Code neben der Aufgabe im Heft) ---------- */
@@ -388,9 +510,25 @@
     app.innerHTML = h + '</ul><footer>Dein Fortschritt wird nur auf diesem Gerät gespeichert.</footer>';
   }
 
+  /* ---------- Hell / Dunkel ---------- */
+  (function () {
+    var top = document.querySelector('.top'); if (!top) return;
+    var dark = false; try { dark = localStorage.getItem('elifba-dark') === '1'; } catch (e) {}
+    var b = document.createElement('button'); b.className = 'themebtn';
+    function set() {
+      document.documentElement.classList.toggle('dark', dark);
+      b.textContent = dark ? '☀' : '☾'; b.setAttribute('aria-label', dark ? 'Helle Ansicht' : 'Dunkle Ansicht');
+      var m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#000000' : '#ffffff';
+    }
+    b.onclick = function () { dark = !dark; try { localStorage.setItem('elifba-dark', dark ? '1' : '0'); } catch (e) {} set(); };
+    set();
+    window.ELIFBA_THEMEBTN = b;
+  })();
+
   var id = document.body.dataset.lesson;
   var q = new URLSearchParams(location.search).get('l');
   if (id === '' && q !== null) id = q;
   var L = id === '' ? null : D.lessons.filter(function (x) { return String(x.id) === String(id); })[0];
   if (L) lessonPage(L); else overview();
+  (function () { var top = document.querySelector('.top'), b = window.ELIFBA_THEMEBTN, nav = top && top.querySelector('.nav'); if (top && b) { if (nav) top.insertBefore(b, nav); else top.appendChild(b); } })();
 })();
