@@ -1,6 +1,6 @@
 # Prüfbericht Audio · Elif-Ba-App
 
-Stand: Heft-PDF vom 13.11.2026. Geprüft wurden alle 1025 hörbaren Karten und Verszeilen aus dem Heft.
+Stand: Heft-PDF vom 13.11.2026. Geprüft wurden alle 1023 hörbaren Karten und Verszeilen aus dem Heft.
 
 ## So wurde geprüft
 
@@ -8,9 +8,9 @@ Für jede Karte wird beim Bauen der Text aus der PDF gelesen und mit dem Korante
 
 ## Ergebnis
 
-- 978 von 1025 mit geprüftem Audio (95 %)
-- davon 348 Wortkarten (genau die Wörter auf der Karte) und 630 ganze Verse
-- 47 ohne Audio (Liste unten)
+- 972 von 1023 mit geprüftem Audio (95 %)
+- davon 342 Wortkarten (genau die Wörter auf der Karte) und 630 ganze Verse
+- 51 ohne Audio (Liste unten)
 
 ## Ohne Audio
 
@@ -25,6 +25,7 @@ Meist sind das Tabellenzeilen mit Regelnamen, Karten mit nur einem Teil eines Wo
 - Lektion 20, Heft S. 163: 106:4, 105:4
 - Lektion 24, Heft S. 186: 65:10, 74:39
 - Lektion 24, Heft S. 187: 97:4
+- Lektion 25, Heft S. 190: 7:8, 7:158, 7:164, 7:177
 - Lektion 27, Heft S. 194: 2:245, 7:69
 - Lektion 28, Heft S. 195: 18:1, 18:1, 18:1, 18:1, 36:52
 - Lektion 29, Heft S. 196: 11:41, 11:41
@@ -32,4 +33,4 @@ Meist sind das Tabellenzeilen mit Regelnamen, Karten mit nur einem Teil eines Wo
 - Lektion 31, Heft S. 198: 41:44, 41:44
 - Lektion 32, Heft S. 201: 25:32
 - Lektion 33, Heft S. 209: 1:5, 2:173, 110:3, 2:22, 94:8, 99:7, 101:1, 111:1, 112:1
-- Lektion 33, Heft S. 210: 33:1, 1:5, 64:1, 72:1, 21:1, 17:1, 79:1, 94:1, 48:1, 60:1, 1:1, 1:4
+- Lektion 33, Heft S. 210: 1:4, 1:1, 33:1, 1:5, 64:1, 72:1, 21:1, 17:1, 79:1, 94:1, 48:1, 60:1

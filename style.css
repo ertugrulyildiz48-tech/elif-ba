@@ -269,8 +269,8 @@ html { scroll-padding-top: 80px; }
 @media (min-width: 900px) { .stepbar { grid-template-columns: 200px auto 200px; justify-content: center; } }
 
 /* ---------- Runde 4: arabische Schrift überall gleich groß ---------- */
-:root { --apx: 28px; }
-@media (min-width: 700px) { :root { --apx: 32px; } }
+:root { --as: 1; --apx: calc(28px * var(--as)); }
+@media (min-width: 700px) { :root { --apx: calc(32px * var(--as)); } }
 .card img { max-width: 100%; height: auto; margin-left: auto; margin-right: auto; }
 .cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 .cards .card { width: auto; flex: 0 1 auto; min-width: 150px; max-width: 100%; }
@@ -307,3 +307,91 @@ html.dark .vmark.on { box-shadow: 0 0 0 3px #ff6b5a; }
 .top .themebtn { margin-left: 0; }
 .top .brand + .themebtn { margin-left: auto; }
 html.dark .pg.head img, html.dark .viewer.nofilter img { filter: none; }
+
+.iqrabtn { display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--ink); color: var(--bg); font: 600 15px/1 system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
+.top .brand + .iqrabtn { margin-left: auto; }
+.top .navtoggle + .iqrabtn, .top .iqrabtn + .themebtn { margin-left: 0; }
+@media (max-width: 520px) { .top { padding: 8px 10px; gap: 6px; flex-wrap: nowrap; } .brand { font-size: 0; gap: 0; flex: none; } .brand .ar { font-size: 22px; } .navtoggle, .iqrabtn { padding: 6px 10px; font-size: 14px; min-width: 0; } .navtoggle { gap: 5px; } .themebtn { width: 38px; height: 38px; } }
+@media (max-width: 350px) { .navtoggle, .iqrabtn { padding: 6px 8px; font-size: 13px; } }
+
+/* ---------- Runde 6: Leiste oben, Einstellungen, Verszeichen, Koran ---------- */
+.top { flex-wrap: nowrap; }
+.tnav { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.tb { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 6px 14px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--ink); font: 600 15px/1 system-ui, sans-serif; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.tb.on { background: var(--ink); color: var(--bg); }
+.tb.gear { width: 40px; padding: 0; flex: none; }
+@media (max-width: 520px) { .tnav { gap: 6px; } .tb { padding: 6px 11px; font-size: 14px; } }
+@media (max-width: 350px) { .tb { padding: 6px 8px; font-size: 13px; } }
+
+/* Karten: Abspielknopf links, Vers rechts, darunter Sure und Vers */
+.rows .card { display: grid; grid-template-columns: 44px minmax(0, 1fr); grid-template-areas: "play line" "ref ref"; align-items: center; gap: 2px 10px; padding: 8px 12px 8px 10px; min-height: 0; text-align: left; }
+.rows .card.still { grid-template-columns: minmax(0, 1fr); grid-template-areas: "line" "ref"; }
+.rows .card .play { position: static; grid-area: play; margin: 0; width: 38px; height: 38px; font-size: 12px; justify-self: center; }
+.rows .card .cl { grid-area: line; display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; direction: ltr; }
+.rows .card.two .cl { align-items: flex-end; }
+.rows .card .cl img { margin: 0; flex: 0 1 auto; min-width: 0; }
+.rows .card .ref, .rows .card.still .ref { position: static; grid-area: ref; width: auto; margin: 0; text-align: left; padding: 0 2px 2px; font-size: 13px; line-height: 1.3; }
+.cards .card .cl { display: block; }
+.cards .card .ref, .cards .card.still .ref { position: static; display: block; text-align: center; padding: 4px 8px 8px; line-height: 1.3; }
+.vn { flex: none; width: calc(.95 * var(--apx)); height: calc(.95 * var(--apx)); border-radius: 50%; background: #3b2a1a; color: #fff; display: grid; place-items: center; font: 700 calc(.5 * var(--apx))/1 "Amiri", serif; box-shadow: 0 0 0 1.5px #fff, 0 0 0 3px #3b2a1a; margin-left: 3px; padding-top: .08em; }
+html.dark .vn { background: #f2f2f2; color: #000; box-shadow: 0 0 0 1.5px #000, 0 0 0 3px #f2f2f2; }
+
+/* Merkkasten als echter Text, im Raster neben der letzten Kachel */
+.pbox { border: 1.5px solid var(--line); border-radius: var(--r); padding: 12px 16px 4px; }
+.tiles .tbox { grid-column-end: -1; margin: 0; align-self: start; }
+.tiles { align-items: start; }
+@media (min-width: 560px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 700px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
+@media (min-width: 1000px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Start: weiter lernen */
+.resume { display: block; margin: 18px auto 20px; max-width: 520px; padding: 14px 18px; border-radius: var(--r); background: var(--ink); color: var(--bg); text-decoration: none; text-align: center; }
+.resume b { display: block; font: 700 19px/1.3 system-ui, sans-serif; }
+.resume small { display: block; font-size: 14px; opacity: .85; margin-top: 2px; }
+
+/* Einstellungen */
+.sheet { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .45); display: flex; justify-content: flex-end; }
+.sh-in { width: min(420px, 100%); height: 100%; overflow: auto; -webkit-overflow-scrolling: touch; background: var(--bg); border-left: 1.5px solid var(--line); padding: 14px 18px calc(24px + env(safe-area-inset-bottom)); font-family: system-ui, sans-serif; font-size: 16px; }
+.sh-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.sh-h b { font-size: 20px; }
+.sh-x { width: 44px; height: 44px; border: 1.5px solid var(--line); border-radius: 50%; background: var(--bg); font-size: 16px; cursor: pointer; }
+.sh-row { padding: 12px 0; border-top: 1px solid var(--hair); }
+.sh-row > span { display: block; font-weight: 600; margin-bottom: 8px; }
+.seg { display: flex; border: 1.5px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.seg button { flex: 1; min-height: 44px; border: 0; border-left: 1.5px solid var(--line); background: var(--bg); font: 500 15px/1.2 system-ui, sans-serif; cursor: pointer; padding: 4px 6px; }
+.seg button:first-child { border-left: 0; }
+.seg button.on { background: var(--ink); color: var(--bg); }
+.sh-sec { padding: 14px 0; border-top: 1px solid var(--hair); }
+.sh-sec p { margin: 8px 0 12px; font-size: 15px; color: var(--muted); }
+.sh-btn { display: block; text-align: center; padding: 12px; border-radius: var(--r); background: var(--ink); color: var(--bg); text-decoration: none; font-weight: 600; margin-bottom: 10px; }
+.sh-link { border: 0; background: none; padding: 6px 0; font: inherit; font-size: 15px; text-decoration: underline; color: var(--muted); cursor: pointer; }
+.sh-big { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; border: 1.5px solid var(--line); border-radius: var(--r); text-decoration: none; margin-top: 4px; }
+.sh-big b { display: block; font-size: 17px; }
+.sh-big small { color: var(--muted); font-size: 14px; }
+.sh-big > span:last-child { font-size: 26px; line-height: 1; }
+.sh-foot { font-size: 13px; color: var(--muted); margin: 16px 0 0; }
+
+/* Koran */
+.khead { text-align: center; padding: 22px 0 6px; }
+.khead h1 { font-size: 27px; margin: 0 0 6px; font-weight: 600; }
+.kor { padding: 5px; }
+.kor .mh { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.kor .mh .surah-play { justify-self: start; }
+.kor .mh .kde { justify-self: end; display: inline-flex; align-items: center; min-height: 40px; padding: 6px 16px; border: 1.5px solid var(--line); border-radius: 999px; text-decoration: none; font: 600 15px/1 system-ui, sans-serif; }
+.kor .mh .quran { font-size: 28px; text-align: center; }
+@media (max-width: 520px) { .kor .mh { grid-template-columns: 1fr 1fr; gap: 6px 8px; } .kor .mh .quran { grid-column: 1 / -1; grid-row: 1; } }
+.ktext { font-size: calc(1.25 * var(--apx)); padding: 14px 14px 22px; color: var(--ink); }
+.kbas { text-align: center; margin-bottom: .1em; }
+.kflow { text-align: justify; text-align-last: center; line-height: 1.9em; }
+.kw { height: 2.05em; vertical-align: middle; overflow: visible; fill: currentColor; margin: -.12em 0; }
+.kw .c1 { fill: #b3122e; }
+html.dark .kw .c1 { fill: #ff6b6b; }
+html.dark.tj .ktext use[class] { filter: brightness(1.7); }
+.kvn { display: inline-grid; place-items: center; vertical-align: middle; width: 1.9em; height: 1.9em; margin: 0 .35em; border: 0; border-radius: 50%; background: #3b2a1a; color: #fff; font: 700 .42em/1 "Amiri", serif; box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px #3b2a1a; cursor: pointer; padding: .1em 0 0; -webkit-tap-highlight-color: transparent; position: relative; }
+.kvn::after { content: ""; position: absolute; inset: -9px; }
+html.dark .kvn { background: #f2f2f2; color: #000; box-shadow: 0 0 0 1.5px #000, 0 0 0 3px #f2f2f2; }
+.ky.on { color: #b3122e; }
+.ky.on .kvn, .kvn.on { background: #b3122e; box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px #b3122e; color: #fff; }
+html.dark .ky.on { color: #ff8a80; }
+body[data-view="koran"] { padding-bottom: 120px; }
+@media (max-width: 520px) { .ktext { font-size: calc(1.02 * var(--apx)); padding: 10px 8px 18px; } }
