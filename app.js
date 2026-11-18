@@ -5,6 +5,7 @@
   var AYAH = 'https://everyayah.com/data/Husary_128kbps/';
   var WORD = 'https://audio.qurancdn.com/';
   var SURAH = 'https://download.quranicaudio.com/quran/mahmood_khaleel_al-husaree/';
+  var CLIP = 'https://download.quranicaudio.com/qdc/khalil_al_husary/murattal/';
   var LETTER = 'https://www.islamcan.com/learn-arabic/arabic-alphabets/';
 
   var SN = 'Al-Fātiḥa|Al-Baqara|Āl ʿImrān|An-Nisāʾ|Al-Māʾida|Al-Anʿām|Al-Aʿrāf|Al-Anfāl|At-Tauba|Yūnus|Hūd|Yūsuf|Ar-Raʿd|Ibrāhīm|Al-Ḥidschr|An-Naḥl|Al-Isrāʾ|Al-Kahf|Maryam|Ṭā-Hā|Al-Anbiyāʾ|Al-Ḥadsch|Al-Muʾminūn|An-Nūr|Al-Furqān|Asch-Schuʿarāʾ|An-Naml|Al-Qaṣaṣ|Al-ʿAnkabūt|Ar-Rūm|Luqmān|As-Sadschda|Al-Aḥzāb|Sabaʾ|Fāṭir|Yā-Sīn|Aṣ-Ṣāffāt|Ṣād|Az-Zumar|Ghāfir|Fuṣṣilat|Asch-Schūrā|Az-Zuchruf|Ad-Duchān|Al-Dschāthiya|Al-Aḥqāf|Muḥammad|Al-Fatḥ|Al-Ḥudschurāt|Qāf|Adh-Dhāriyāt|Aṭ-Ṭūr|An-Nadschm|Al-Qamar|Ar-Raḥmān|Al-Wāqiʿa|Al-Ḥadīd|Al-Mudschādala|Al-Ḥaschr|Al-Mumtaḥana|Aṣ-Ṣaff|Al-Dschumuʿa|Al-Munāfiqūn|At-Taghābun|Aṭ-Ṭalāq|At-Taḥrīm|Al-Mulk|Al-Qalam|Al-Ḥāqqa|Al-Maʿāridsch|Nūḥ|Al-Dschinn|Al-Muzzammil|Al-Muddaththir|Al-Qiyāma|Al-Insān|Al-Mursalāt|An-Nabaʾ|An-Nāziʿāt|ʿAbasa|At-Takwīr|Al-Infiṭār|Al-Muṭaffifīn|Al-Inschiqāq|Al-Burūdsch|Aṭ-Ṭāriq|Al-Aʿlā|Al-Ghāschiya|Al-Fadschr|Al-Balad|Asch-Schams|Al-Lail|Aḍ-Ḍuḥā|Asch-Scharḥ|At-Tīn|Al-ʿAlaq|Al-Qadr|Al-Bayyina|Az-Zalzala|Al-ʿĀdiyāt|Al-Qāriʿa|At-Takāthur|Al-ʿAṣr|Al-Humaza|Al-Fīl|Quraisch|Al-Māʿūn|Al-Kauthar|Al-Kāfirūn|An-Naṣr|Al-Masad|Al-Ichlāṣ|Al-Falaq|An-Nās'.split('|');
@@ -46,7 +47,7 @@
   function play(urls, title, subtitle, el) {
     if (current === el && !audio.paused) { audio.pause(); return; }
     mark(current, false); current = el;
-    queue = urls.slice(1); onStep = null; audio.loop = loopPref && urls.length === 1;
+    queue = urls.slice(1); onStep = null; audio.loop = loopPref && urls.length === 1; clip = null;
     audio.src = urls[0]; audio.playbackRate = rate;
     audio.play().catch(function () { plS.textContent = 'Audio konnte nicht geladen werden. Bitte Internetverbindung prüfen.'; });
     plT.textContent = title; plS.textContent = subtitle; pl.hidden = false; mark(el, true);
@@ -71,11 +72,29 @@
   function playCard(ex, el) {
     var a = ex.aud; if (!a) return;
     var k = a.k.split(':'), ref = sname(+k[0]) + ' ' + a.k;
-    // Einzeln aufgenommene Wörter (quran.com) nur bei genau einem Wort. Bei mehreren Wörtern fehlt dort der Tajwīd
-    // zwischen den Wörtern, deshalb der ganze Vers von al-Ḥuṣarī.
+    // Ein Wort: Einzelaufnahme (quran.com). Mehrere Wörter: genau diese Wörter aus al-Ḥuṣarīs Aufnahme
+    // (Wortzeiten von quran.com), damit der Tajwīd zwischen den Wörtern hörbar bleibt. Ganzer Vers nur bei Verskarten.
     if (a.t === 'w' && a.u.length === 1) play([WORD + a.u[0]], ref, 'Genau dieses Wort (quran.com)', el);
-    else play([ayahUrl(+k[0], +k[1])], ref, (a.t === 'w' ? 'Ganzer Vers, die Stelle kommt darin vor' : 'Ganzer Vers') + ' · Maḥmūd Khalīl al-Ḥuṣarī', el);
+    else if (a.t === 'w' && a.c) playClip(CLIP + (+k[0]) + '.mp3', a.c[0], a.c[1], ref, 'Genau diese Wörter · Maḥmūd Khalīl al-Ḥuṣarī', el);
+    else if (a.t === 'w') return;
+    else play([ayahUrl(+k[0], +k[1])], ref, 'Ganzer Vers · Maḥmūd Khalīl al-Ḥuṣarī', el);
   }
+  /* Ausschnitt aus einer Surenaufnahme: Start und Ende in Millisekunden */
+  var clip = null;
+  function playClip(url, a, b, title, sub, el) {
+    if (current === el && !audio.paused) { audio.pause(); return; }
+    var s0 = Math.max(0, a - 40) / 1000, s1 = (b + 120) / 1000;
+    play([url + '#t=' + s0.toFixed(2) + ',' + s1.toFixed(2)], title, sub, el);
+    audio.loop = false; clip = { a: s0, b: s1 };
+    var seek = function () { if (clip && Math.abs(audio.currentTime - clip.a) > 0.3) audio.currentTime = clip.a; };
+    audio.addEventListener('loadedmetadata', seek, { once: true });
+  }
+  audio.addEventListener('timeupdate', function () {
+    if (!clip || audio.currentTime < clip.b) return;
+    if (loopPref) { audio.currentTime = clip.a; return; }
+    audio.pause(); mark(current, false);
+  });
+  audio.addEventListener('emptied', function () { if (clip && audio.src.indexOf('#t=') < 0) clip = null; });
 
   /* ---------- Bausteine ---------- */
   function chips(rules) {
@@ -92,7 +111,7 @@
       (has ? '<span class="play" aria-hidden="true">▶</span>' : '') +
       '<span class="cl">' + (ex.vm ? '<span class="vn" aria-hidden="true">' + arnum(key.split(':')[1]) + '</span>' : '') +
       '<img src="' + src(ex.img) + '" width="' + ex.w + '" height="' + ex.h + '" alt="' + esc(title) + '" style="width:calc(' + em + ' * var(--apx))"></span>' +
-      '<span class="ref">' + esc(title) + '</span></button>';
+      (kind === 'u' ? '<span class="ref">' + esc(title) + '</span>' : '') + '</button>';
   }
   /* Lange Verse: in einer Reihe, wenn der Platz reicht, sonst die Fassung in zwei Zeilen. Das Verszeichen bleibt immer am Versende. */
   function fitCards() {
@@ -226,6 +245,124 @@
     });
   }
 
+  /* ---------- Markier-Aufgaben: Farbe wählen, Buchstaben antippen, korrigieren ----------
+     Text: Tanzil Uthmani. Lösung: Tajwīd-Stellen aus cpfair/quran-tajweed (CC BY 4.0), beim Bauen gegen die Zählung im Heft geprüft. */
+  var MK_RULES = { 'M.T.': ['madd_2'], 'M.Mut.': ['madd_muttasil'], 'M.Mun.': ['madd_munfasil'], 'M.Lazım': ['madd_6'], 'İ.M.Günne': ['idghaam_ghunnah'], 'İ.B.Günne': ['idghaam_no_ghunnah'],
+    'İklab': ['iqlab'], 'İhfa': ['ikhfa'], 'Dudak İ.': ['ikhfa_shafawi'], 'İ.Misl.': ['idghaam_shafawi'], 'İ.Mütec.': ['idghaam_mutajanisayn'], 'İ.Mütek.': ['idghaam_mutaqaribayn'], 'Kalkale': ['qalqalah'] };
+  var MK_COMB = /[ؐ-ًؚ-ٰٟۖ-ۭ࣓-ࣿ]/;
+  var MK_BAS = '\u0628\u0650\u0633\u0652\u0645\u0650 \u0671\u0644\u0644\u0651\u064e\u0647\u0650 \u0671\u0644\u0631\u0651\u064e\u062d\u0652\u0645\u064e\u0670\u0646\u0650 \u0671\u0644\u0631\u0651\u064e\u062d\u0650\u064a\u0645\u0650 ';
+  function mkFor(L, page) { return (D.mark || []).filter(function (e) { return e.l === L.id && e.page === page; })[0] || null; }
+  function mkGroups(L) {
+    var known = {}, groups = [], byColor = {};
+    D.lessons.forEach(function (X) { if (X.id <= L.id) (X.rules || []).forEach(function (k) { known[k] = 1; }); });
+    Object.keys(known).forEach(function (k) {
+      var r = D.rules[k]; if (!r || !MK_RULES[k]) return;
+      var g = byColor[r.color]; if (!g) { g = byColor[r.color] = { color: r.color, keys: [], rules: [] }; groups.push(g); }
+      g.keys.push(k); g.rules = g.rules.concat(MK_RULES[k]);
+    });
+    var unchecked = Object.keys(known).filter(function (k) { return D.rules[k] && !MK_RULES[k]; });
+    return { groups: groups, unchecked: unchecked };
+  }
+  function mkUnits(t) {
+    var u = [];
+    for (var i = 0; i < t.length; i++) {
+      var ch = t[i];
+      if (MK_COMB.test(ch) && u.length && u[u.length - 1].sp === false) { u[u.length - 1].t += ch; u[u.length - 1].b = i + 1; continue; }
+      u.push({ t: ch, a: i, b: i + 1, sp: ch === ' ' });
+    }
+    return u;
+  }
+  function mkHtml(E, L, sec) {
+    var G = mkGroups(L);
+    var h = '<div class="mk" data-mk="' + E.l + '-' + E.page + '"><div class="mk-h"><b>Selbst markieren</b><span>' + esc(sname(E.s)) + ' ' + E.s + ':' + E.a + (E.b > E.a ? '–' + E.b : '') + '</span></div>' +
+      '<p class="hint">1. Farbe antippen. 2. Buchstaben antippen, die zu dieser Regel gehören (nochmal tippen nimmt die Farbe weg). 3. „Korrigieren“.</p>' +
+      '<div class="mk-leg">' + G.groups.map(function (g, i) { return '<button class="mk-c" data-g="' + i + '" style="--c:' + g.color + '"><i></i>' + g.keys.map(esc).join(' · ') + '</button>'; }).join('') +
+      '<button class="mk-c mk-er" data-g="-1"><i></i>Radierer</button></div>' +
+      (G.unchecked.length ? '<p class="mk-note">' + G.unchecked.map(function (k) { return esc(D.rules[k].name); }).join(', ') + ': kannst du hier nicht markieren, die prüft die App nicht.</p>' : '') +
+      '<div class="mk-t quran" dir="rtl">' + E.v.map(function (v, vi) {
+        var bas = (v[0] === 1 && E.s !== 1 && v[1].indexOf(MK_BAS) === 0) ? MK_BAS.length : 0, inB = false;
+        return mkUnits(v[1]).map(function (u, ui) {
+          var o = '';
+          if (bas && ui === 0) { o = '<span class="mk-bas">'; inB = true; }
+          if (inB && u.a >= bas) { o += '</span>'; inB = false; }
+          return o + (u.sp ? ' ' : '<span class="u" data-v="' + vi + '" data-u="' + ui + '">' + u.t + '</span>');
+        }).join('') + (inB ? '</span>' : '') + ' <span class="mk-n">﴿' + arnum(v[0]) + '﴾</span> ';
+      }).join('') + '</div>' +
+      '<div class="mk-b"><button class="mk-go">Korrigieren</button><button class="mk-sol" hidden>Lösung zeigen</button><button class="mk-clr">Alles löschen</button></div><div class="mk-res" aria-live="polite"></div></div>';
+    return h;
+  }
+  function mkBind(L) {
+    [].forEach.call(app.querySelectorAll('.mk'), function (box) {
+      var id = box.dataset.mk.split('-'), sec = null, E = (D.mark || []).filter(function (e) { return e.l === +id[0] && e.page === +id[1]; })[0];
+      if (!E) return;
+      var G = mkGroups(L).groups, cur = 0, key = 'elifba-mk-' + box.dataset.mk, marks = {};
+      try { marks = JSON.parse(store(key) || '{}') || {}; } catch (e) { marks = {}; }
+      var U = E.v.map(function (v) { return mkUnits(v[1]); });
+      function paint() {
+        [].forEach.call(box.querySelectorAll('.u'), function (s) {
+          var g = marks[s.dataset.v + ':' + s.dataset.u];
+          if (g !== undefined && G[g]) { s.style.setProperty('--c', G[g].color); s.classList.add('on'); } else { s.classList.remove('on'); s.style.removeProperty('--c'); }
+        });
+        [].forEach.call(box.querySelectorAll('.mk-c'), function (b) { b.classList.toggle('sel', +b.dataset.g === cur); });
+      }
+      function clearCheck() { [].forEach.call(box.querySelectorAll('.u.bad, .u.miss'), function (s) { s.classList.remove('bad', 'miss'); }); box.querySelector('.mk-res').textContent = ''; box.querySelector('.mk-sol').hidden = true; }
+      // Lösung: welche Buchstaben gehören zu welcher Gruppe (Madd: auch der Buchstabe davor zählt)
+      function sol() {
+        var occ = [];
+        E.v.forEach(function (v, vi) {
+          v[2].forEach(function (an) {
+            var gi = -1; G.forEach(function (g, i) { if (g.rules.indexOf(an[2]) > -1) gi = i; }); if (gi < 0) return;
+            var us = []; U[vi].forEach(function (u, ui) { if (!u.sp && u.a < an[1] && u.b > an[0]) us.push(ui); });
+            if (/^madd/.test(an[2]) && us.length) { var p = us[0] - 1; if (p >= 0 && !U[vi][p].sp) us.unshift(p); }
+            // Toleranz: ein Buchstabe daneben im selben Wort zählt auch (verbundene Schrift ist schwer genau zu treffen)
+            var near = us.slice(); if (us.length) { var lo = us[0] - 1, hi = us[us.length - 1] + 1; if (lo >= 0 && !U[vi][lo].sp) near.push(lo); if (hi < U[vi].length && !U[vi][hi].sp) near.push(hi); }
+            occ.push({ g: gi, v: vi, us: us, near: near });
+          });
+        });
+        return occ;
+      }
+      box.onclick = function (ev) {
+        var c = ev.target.closest('.mk-c'); if (c) { cur = +c.dataset.g; paint(); return; }
+        var s = ev.target.closest('.u');
+        if (s) {
+          var k = s.dataset.v + ':' + s.dataset.u;
+          if (cur < 0 || marks[k] === cur) delete marks[k]; else marks[k] = cur;
+          store(key, JSON.stringify(marks)); clearCheck(); paint(); return;
+        }
+        if (ev.target.closest('.mk-clr')) { marks = {}; store(key, '{}'); clearCheck(); paint(); return; }
+        if (ev.target.closest('.mk-go')) {
+          clearCheck();
+          var occ = sol(), ok = {}, wrong = 0;
+          occ.forEach(function (o) { o.near.forEach(function (ui) { ok[o.v + ':' + ui + ':' + o.g] = 1; }); });
+          Object.keys(marks).forEach(function (k) {
+            if (!ok[k + ':' + marks[k]]) { wrong++; var p = k.split(':'), el = box.querySelector('.u[data-v="' + p[0] + '"][data-u="' + p[1] + '"]'); if (el) el.classList.add('bad'); }
+          });
+          var used = {}; Object.keys(marks).forEach(function (k) { used[marks[k]] = 1; });
+          var own = {}; (L.rules || []).forEach(function (k) { G.forEach(function (g, i) { if (g.keys.indexOf(k) > -1) own[i] = 1; }); });
+          var lines = [];
+          G.forEach(function (g, i) {
+            if (!used[i] && !own[i]) return;
+            var all = occ.filter(function (o) { return o.g === i; }), found = all.filter(function (o) { return o.near.some(function (ui) { return marks[o.v + ':' + ui] === i; }); });
+            found.forEach(function (o) { o.found = true; });
+            lines.push(g.keys.join(' · ') + ': ' + found.length + ' von ' + all.length + ' gefunden');
+          });
+          occ = occ.filter(function (o) { return used[o.g] || own[o.g]; });
+          var r = box.querySelector('.mk-res');
+          r.innerHTML = (wrong ? '<b class="bad">' + wrong + (wrong === 1 ? ' Buchstabe ist' : ' Buchstaben sind') + ' falsch markiert (rot umkreist).</b>' : (Object.keys(marks).length ? '<b class="good">Keine falsche Markierung.</b>' : '')) +
+            lines.map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('');
+          box.querySelector('.mk-sol').hidden = !occ.some(function (o) { return !o.found; });
+          var sb = box.querySelector('.mk-sol'); sb.onclick = function (e2) { e2.stopPropagation(); occ.forEach(function (o) { if (!o.found) o.us.forEach(function (ui) { var el = box.querySelector('.u[data-v="' + o.v + '"][data-u="' + ui + '"]'); if (el) { el.classList.add('miss'); el.style.setProperty('--m', G[o.g].color); } }); }); };
+        }
+      };
+      paint();
+    });
+  }
+
+  /* Kleine Zwischenüberschriften, die im Heft als Bild ausgeschnitten wurden: als Text */
+  var SUBHEAD = { 'img/x13-005.webp': 'Vor ن', 'img/x13-006.webp': 'Vor م', 'img/x13-007.webp': 'Vor و',
+    'img/x22-005.webp': 'Gruppe ث ذ ظ', 'img/x22-006.webp': 'Gruppe م ب', 'img/x23-005.webp': 'Gruppe ق ك',
+    'img/x19-005.webp': 'Al-Muṭaffifīn 83:3', 'img/x24-003.webp': 'Al-Inschiqāq 84:14–84:15',
+    'img/x10-010.webp': 'تَمْرِينٌ', 'img/x10-016.webp': 'تَمْرِينٌ', 'img/x19-012.webp': 'تَمْرِينٌ', 'img/x20-012.webp': 'تَمْرِينٌ', 'img/x20-001.webp': 'اَلْمِيمُ السَّاكِنَةُ' };
   /* ---------- Das Heft, Abschnitt für Abschnitt ---------- */
   function sectionsHtml(L) {
     if (!L.sections || !L.sections.length) return '';
@@ -234,9 +371,11 @@
       L.sections.map(function (s, i) { var id = s.anchor || 'abschnitt-' + (i + 1); return '<li><a href="#' + id + '" data-go="' + id + '"><span>' + esc(s.title) + '</span><small>S. ' + s.page + '</small></a></li>'; }).join('') + '</ol></details>';
     return '<section id="heft"><h2>Aus dem Heft · alle Erklärungen und Aufgaben</h2><p class="hint">Alles in derselben Reihenfolge wie im Heft. Bilder antippen zum Vergrößern. Karten mit ▶ kannst du anhören.</p>' + toc +
       L.sections.map(function (s, i) {
-        var id = s.anchor || 'abschnitt-' + (i + 1), auf = s.kind === 'aufgabe';
+        var id = s.anchor || 'abschnitt-' + (i + 1), auf = s.kind === 'aufgabe', MK = auf ? mkFor(L, s.page) : null, mkImgs = [];
         return '<article class="hs ' + (auf ? 'auf' : 'erk') + '" id="' + id + '"><header><span class="tag">' + (auf ? 'Aufgabe' : 'Erklärung') + '</span><small>Heft S. ' + s.page + '</small></header><h3>' + esc(s.title) + '</h3>' + secTools(s, i) +
+          (MK ? mkHtml(MK, L, s) : '') +
           s.parts.map(function (p, pi) {
+            if (MK && p.img && !p.plain) { mkImgs.push(p); return ''; }
             var pid = '';
             if (p._in) return '';
             if (!seenPage[p.page]) { seenPage[p.page] = 1; pid = ' id="s-' + p.page + '"'; }
@@ -254,7 +393,9 @@
                 (p.marks ? '<p class="mtip">Tipp auf ein Verszeichen, dann hörst du genau diesen Vers.</p>' : '') + '</div>';
             }
             if (p.img && p.plain) return '<div class="ptext' + (p.box && /^[A-ZÄÖÜ]{4,}/.test(p.plain[0]) ? ' pbox' : '') + '"' + pid + '>' + p.plain.filter(function (x) { return x.replace(/\s/g, '') !== s.title.replace(/\s/g, ''); }).map(function (x) { return '<p>' + txt(x) + '</p>'; }).join('') + '</div>';
-            if (p.img) return '<button class="pg"' + pid + '><img alt="Heft Seite ' + p.page + '" width="' + p.w + '" height="' + p.h + '" src="' + src(p.img) + '"></button>';
+            if (p.img && SUBHEAD[p.img]) return '<p class="subh"' + pid + '>' + txt(SUBHEAD[p.img]) + '</p>';
+            // Bildausschnitte in der Größe wie im Heft (1100 Pixel = volle Textbreite), nie hochskaliert
+            if (p.img) return '<button class="pg"' + pid + (p.w < 1100 ? ' style="width:' + (100 * p.w / 1100).toFixed(1) + '%"' : '') + '><img alt="Heft Seite ' + p.page + '" width="' + p.w + '" height="' + p.h + '" src="' + src(p.img) + '"></button>';
             if (p.tiles) {
               var nx = s.parts[pi + 1], extra = '';
               if (nx && nx.img && nx.plain && nx.box) { nx._in = 1; extra = '<div class="ptext pbox tbox">' + nx.plain.map(function (x) { return '<p>' + txt(x) + '</p>'; }).join('') + '</div>'; }
@@ -262,7 +403,8 @@
             }
             var list = p.kind === 'u' ? L.practice : L.examples;
             return '<div' + pid + ' class="' + (p.kind === 'u' ? 'rows' : 'cards') + '">' + p.cards.map(function (ci) { return cardHtml(list[ci], ci, p.kind); }).join('') + '</div>';
-          }).join('') + (/Wiederholung/.test(s.title) && /Regeln/.test(s.title) ? recapBlock(L) : '') + '</article>';
+          }).join('') + (mkImgs.length ? '<details class="mk-orig"><summary>Heftseite zum Vergleich</summary>' + mkImgs.map(function (p) { return '<button class="pg"><img alt="Heft Seite ' + p.page + '" width="' + p.w + '" height="' + p.h + '" src="' + src(p.img) + '"></button>'; }).join('') + '</details>' : '') +
+          (/Wiederholung/.test(s.title) && /Regeln/.test(s.title) ? recapBlock(L) : '') + '</article>';
       }).join('') + '</section>';
   }
 
@@ -270,13 +412,13 @@
   function secText(s) { return (s.text || []).filter(function (t) { return t !== s.title && t.replace(/\s/g, '') !== s.title.replace(/\s/g, ''); }); }
   function secTools(s, i) {
     var t = secText(s); if (!t.length) return '';
-    return '<div class="stools">' + ('speechSynthesis' in window ? '<button class="say" data-sec="' + i + '">🔊 Anhören</button>' : '') +
+    return '<div class="stools">' + (TTS.ok ? '<button class="say" data-sec="' + i + '">🔊 Anhören</button>' : '') +
       '<button class="readbtn" data-sec="' + i + '" aria-expanded="false">📖 Text lesen</button></div>' +
       '<div class="stext" id="stext-' + i + '" hidden>' + t.map(function (x) { return '<p>' + txt(x) + '</p>'; }).join('') + '</div>';
   }
   function bindSecTools(L) {
     app.querySelectorAll('.say[data-sec]').forEach(function (el) {
-      el.onclick = function () { var s = L.sections[+el.dataset.sec]; say(s.title + '. ' + secText(s).join(' '), el); };
+      el.onclick = function () { var s = L.sections[+el.dataset.sec]; say([s.title + '.'].concat(secText(s)), el); };
     });
     app.querySelectorAll('.readbtn').forEach(function (el) {
       el.onclick = function () { var b = document.getElementById('stext-' + el.dataset.sec); b.hidden = !b.hidden; el.classList.toggle('on', !b.hidden); el.setAttribute('aria-expanded', String(!b.hidden)); };
@@ -306,7 +448,7 @@
       rs.map(function (x, i) {
         return '<div class="rrule" style="--c:' + x.r.color + '"><div class="rh"><b class="rk" style="--c:' + x.r.color + '">' + esc(x.k) + '</b><span>' + esc(x.r.name) + '</span></div>' +
           '<p>' + txt(x.r.short || '') + '</p><div class="rb">' +
-          ('speechSynthesis' in window ? '<button class="rsay" data-i="' + i + '">🔊 Erklärung</button>' : '') +
+          (TTS.ok ? '<button class="rsay" data-i="' + i + '">🔊 Erklärung</button>' : '') +
           (x.ex ? '<button class="rex" data-i="' + i + '"><span class="play" aria-hidden="true">▶</span> Beispiel ' + esc(sname(+x.ex.aud.k.split(':')[0]) + ' ' + x.ex.aud.k) + '</button>' : '') +
           '<a class="rgo" href="l/' + x.les.id + '/">Lektion ' + x.les.id + '</a></div></div>';
       }).join('') + '</div>';
@@ -317,11 +459,11 @@
     app.querySelectorAll('.rsay').forEach(function (el) {
       el.onclick = function () {
         var x = rs[+el.dataset.i];
-        say(x.r.name + '. ' + (x.r.short || '') + '. ' + (x.les.when ? 'Wann? ' + x.les.when + ' ' : '') + (x.les.how ? 'Wie? ' + x.les.how : ''), el);
+        say([x.r.name + '.', x.r.short || '', x.les.when ? 'Wann? ' + x.les.when : '', x.les.how ? 'Wie? ' + x.les.how : ''], el);
       };
     });
     app.querySelectorAll('.rex').forEach(function (el) {
-      el.onclick = function () { if (window.speechSynthesis) window.speechSynthesis.cancel(); playCard(rs[+el.dataset.i].ex, el); };
+      el.onclick = function () { TTS.stop(); playCard(rs[+el.dataset.i].ex, el); };
     });
   }
 
@@ -351,21 +493,89 @@
     var t = document.querySelector('.top'); window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - (t ? t.offsetHeight : 0) - 12);
   }
 
-  /* ---------- Vorlesen (Stimme des Geräts) ---------- */
-  function say(text, el) {
-    var sy = window.speechSynthesis; if (!sy) return;
-    if (sy.speaking && el.classList.contains('on')) { sy.cancel(); el.classList.remove('on'); return; }
-    sy.cancel(); audio.pause();
-    [].forEach.call(document.querySelectorAll('.say.on, .rsay.on'), function (o) { o.classList.remove('on'); });
-    var u = new SpeechSynthesisUtterance((text || '').replace(/…/g, ' ').replace(/[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, ' ').replace(/\s+/g, ' '));
-    u.lang = 'de-DE'; u.rate = 0.95;
-    var vs = (sy.getVoices() || []).filter(function (v) { return /^de/i.test(v.lang); });
-    var male = vs.filter(function (v) { return /male|männlich|martin|markus|yannick|stefan|conrad|hans|daniel|viktor|klaus|killian|christoph|#male/i.test(v.name) && !/female|weiblich/i.test(v.name); })[0];
-    if (male) u.voice = male; else if (vs[0]) u.voice = vs[0];
-    u.onend = u.onerror = function () { el.classList.remove('on'); };
-    el.classList.add('on'); sy.speak(u);
-  }
-  if (window.speechSynthesis && window.speechSynthesis.getVoices) window.speechSynthesis.getVoices();
+  /* ---------- Vorlesen auf Deutsch: Satz für Satz, mit Pausen, Start · Pause · Weiter · Stopp ----------
+     Im Browser die Stimme des Geräts (speechSynthesis), in der Android-App die Android-Sprachausgabe (window.AndroidTTS).
+     Die Stimme kann in den Einstellungen gewählt werden; ohne Wahl nimmt die App die natürlichste männliche deutsche Stimme. */
+  var TTS = (function () {
+    var A = window.AndroidTTS || null, sy = window.speechSynthesis || null;
+    var parts = [], idx = 0, state = 'idle', btn = null, timer = null, uid = 0, bar = null;
+    var MALE = /conrad|killian|florian|ralf|stefan|klaus|markus|yannick|martin|hans|jonas|bernd|christoph|kasper|tobias|lukas|male|männlich|mann/i;
+    var GOOD = /natural|online|neural|premium|enhanced|verbessert|network|wavenet/i;
+    function voices() {
+      if (A) { try { return JSON.parse(A.voices() || '[]'); } catch (e) { return []; } }
+      if (!sy) return [];
+      return (sy.getVoices() || []).filter(function (v) { return /^de([-_]|$)/i.test(v.lang); }).map(function (v) { return { id: v.voiceURI || v.name, name: v.name, lang: v.lang, v: v }; });
+    }
+    function score(v) { var s = 0; if (MALE.test(v.name) && !/female|weiblich|frau/i.test(v.name)) s += 4; if (GOOD.test(v.name)) s += 3; if (/de-DE|de_DE/i.test(v.lang)) s += 1; return s; }
+    function pick() {
+      var vs = voices(), want = store('elifba-voice');
+      for (var i = 0; i < vs.length; i++) if (vs[i].id === want) return vs[i];
+      return vs.slice().sort(function (a, b) { return score(b) - score(a); })[0] || null;
+    }
+    var AB = [[/\bz\.\s?B\./g, 'zum Beispiel'], [/\bd\.\s?h\./g, 'das heißt'], [/\bu\.\s?a\./g, 'unter anderem'], [/\bbzw\./g, 'beziehungsweise'], [/\busw\./g, 'und so weiter'],
+      [/\bggf\./g, 'gegebenenfalls'], [/\bca\./g, 'circa'], [/\bNr\./g, 'Nummer'], [/\bS\.\s?(?=\d)/g, 'Seite '], [/\bvgl\./g, 'vergleiche'], [/(\d)\s?[–-]\s?(\d)/g, '$1 bis $2'],
+      [/[·•→]/g, ', '], [/[„“”"«»]/g, ''], [/…/g, '.'], [/\(\s*\)/g, '']];
+    function clean(t) {
+      t = String(t || '');
+      Object.keys(D.rules).sort(function (a, b) { return b.length - a.length; }).forEach(function (k) { if (t.indexOf(k) > -1) t = t.split(k).join(D.rules[k].name || k); });
+      AB.forEach(function (r) { t = t.replace(r[0], r[1]); });
+      t = t.replace(/[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]+/g, ' ');
+      t = t.normalize ? t.normalize('NFD').replace(/[̀-ͯ]/g, '').normalize('NFC') : t;
+      return t.replace(/[ʿʾ‘’`´]/g, '').replace(/\s+([,.!?;:])/g, '$1').replace(/([,.!?;:]){2,}/g, '$1').replace(/\s+/g, ' ').trim();
+    }
+    // in Sätze teilen; ein Abschnitt (Absatz) bekommt eine längere Pause
+    function split(blocks) {
+      var out = [];
+      blocks.forEach(function (b) {
+        var s = clean(b); if (!s) return;
+        var ss = s.match(/[^.!?:]+[.!?:]*/g) || [s];
+        ss.forEach(function (x, i) { x = x.trim(); if (x.length > 1) out.push({ t: x, p: i === ss.length - 1 ? 650 : 320 }); });
+      });
+      return out;
+    }
+    function ui() {
+      if (btn) btn.classList.toggle('on', state !== 'idle');
+      if (!bar) return;
+      bar.hidden = state === 'idle';
+      bar.querySelector('.tt-s').textContent = state === 'paused' ? 'Pausiert · Satz ' + (idx + 1) + ' von ' + parts.length : 'Satz ' + (idx + 1) + ' von ' + parts.length;
+      var pb = bar.querySelector('#tt-p'); pb.textContent = state === 'paused' ? '▶ Weiter' : '❚❚ Pause';
+    }
+    function speakOne() {
+      if (state !== 'on') return;
+      if (idx >= parts.length) { stop(); return; }
+      var my = ++uid, t = parts[idx].t, v = pick();
+      var done = function () { if (my !== uid || state !== 'on') return; var p = parts[idx].p; idx++; ui(); timer = setTimeout(speakOne, p); };
+      if (A) { window.__ttsDone = function (id) { if (+id === my) done(); }; A.speak(t, 0.95, v ? v.id : '', String(my)); }
+      else {
+        var u = new SpeechSynthesisUtterance(t); u.lang = 'de-DE'; u.rate = 0.95; u.pitch = 0.96;
+        if (v && v.v) u.voice = v.v;
+        u.onend = done; u.onerror = function () { if (my === uid && state === 'on') done(); };
+        sy.cancel(); sy.speak(u);
+      }
+      ui();
+    }
+    function hush() { uid++; clearTimeout(timer); if (A) A.stop(); else if (sy) sy.cancel(); }
+    function start(blocks, el) {
+      if (btn === el && state !== 'idle') { stop(); return; }
+      hush(); audio.pause();
+      if (btn) btn.classList.remove('on');
+      parts = split(blocks); idx = 0; btn = el || null; state = 'on';
+      bar = bar || makeBar(); speakOne();
+    }
+    function pause() { if (state !== 'on') return; hush(); state = 'paused'; ui(); }
+    function resume() { if (state !== 'paused') return; state = 'on'; speakOne(); }
+    function stop() { hush(); state = 'idle'; ui(); btn = null; }
+    function makeBar() {
+      var b = document.createElement('div'); b.className = 'ttsbar'; b.hidden = true;
+      b.innerHTML = '<div class="tt-i"><b>Vorlesen</b><span class="tt-s"></span></div><button class="tt-b" id="tt-p">❚❚ Pause</button><button class="tt-b" id="tt-x">■ Stopp</button>';
+      b.onclick = function (ev) { var x = ev.target.closest('button'); if (!x) return; if (x.id === 'tt-x') stop(); else if (state === 'paused') resume(); else pause(); };
+      document.body.appendChild(b); return b;
+    }
+    audio.addEventListener('play', function () { if (state !== 'idle') stop(); });
+    if (sy && sy.getVoices) { sy.getVoices(); if ('onvoiceschanged' in sy) sy.onvoiceschanged = function () {}; }
+    return { ok: !!(A || sy), start: start, stop: stop, voices: voices, pick: pick, clean: clean, split: split, test: function () { start(['Assalāmu ʿalaikum. So klingt diese Stimme beim Vorlesen der Erklärungen.'], null); } };
+  })();
+  function say(text, el) { TTS.start(Array.isArray(text) ? text : [text], el); }
 
   /* ---------- Schritt für Schritt: ein Abschnitt pro Bildschirm ---------- */
   function makeSteps(L, next) {
@@ -396,7 +606,7 @@
       groups: groups,
       show: function (i, quiet) {
         i = Math.max(0, Math.min(groups.length - 1, i)); if (i === cur) return;
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        TTS.stop();
         groups.forEach(function (g, k) { g.el.classList.toggle('cur', k === i); });
         cur = i;
         document.getElementById('st-pos').textContent = (i + 1) + ' / ' + groups.length;
@@ -453,7 +663,7 @@
     h += '<div class="lhead"><span class="ar">' + L.ar + '</span><h1>' + esc(L.title) + '</h1>' +
       '<div class="meta">' + label + ' · Heft S. ' + L.pages[0] + (L.pages[1] !== L.pages[0] ? '–' + L.pages[1] : '') + '</div>' + chips(L.rules) + '</div>';
     h += '<nav class="jump" id="jump"></nav>';
-    h += '<section id="erklaerung"><h2>Kurz erklärt</h2>' + ('speechSynthesis' in window ? '<button class="say" id="say-intro">🔊 Erklärung vorlesen</button>' : '') + L.intro.map(function (p) { return '<p>' + txt(p) + '</p>'; }).join('');
+    h += '<section id="erklaerung"><h2>Kurz erklärt</h2>' + (TTS.ok ? '<button class="say" id="say-intro">🔊 Erklärung vorlesen</button>' : '') + L.intro.map(function (p) { return '<p>' + txt(p) + '</p>'; }).join('');
     if (L.when || L.how) h += '<dl class="kv">' + (L.when ? '<dt>Wann?</dt><dd>' + txt(L.when) + '</dd>' : '') + (L.how ? '<dt>Wie?</dt><dd>' + txt(L.how) + '</dd>' : '') + '</dl>';
     h += '</section>';
     if (L.special === 'letters') h += lettersBlock(L);
@@ -476,12 +686,12 @@
       var a = ev.target.closest('a[data-go]'); if (!a) return; ev.preventDefault(); scrollToId(a.dataset.go);
     });
     bindZoom(app);
-    bindCards(L); bindRecap(L); bindSecTools(L);
+    bindCards(L); bindRecap(L); bindSecTools(L); mkBind(L);
     if (L.special === 'letters') bindLetters(L);
     bindSurahs();
     var si = document.getElementById('say-intro');
     if (si) si.onclick = function () {
-      say(L.title + '. ' + L.intro.join(' ') + (L.when ? ' Wann? ' + L.when : '') + (L.how ? ' Wie? ' + L.how : '') + (L.steps ? ' So wendest du es an. ' + L.steps.join(' ') : '') + (L.mistake ? ' Typischer Fehler. ' + L.mistake : ''), si);
+      say([L.title + '.'].concat(L.intro, L.when ? ['Wann? ' + L.when] : [], L.how ? ['Wie? ' + L.how] : [], L.steps ? ['So wendest du es an.'].concat(L.steps) : [], L.mistake ? ['Typischer Fehler. ' + L.mistake] : []), si);
     };
     STEPS = makeSteps(L, next);
     bindVerses(L);
@@ -511,6 +721,12 @@
     fitCards();
   }
   applyPrefs();
+  function voiceSel() {
+    var vs = TTS.voices(), cur = TTS.pick();
+    if (!vs.length) return '<p class="sh-note">Auf diesem Gerät ist keine deutsche Stimme installiert. Unter Android: Einstellungen › Sprachausgabe › Google-Sprachausgabe › Deutsch.</p>';
+    return '<div class="vrow"><select id="set-voice" aria-label="Stimme">' + vs.map(function (x) { return '<option value="' + esc(x.id) + '"' + (cur && cur.id === x.id ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select>' +
+      '<button class="sh-mini" id="set-vtest">Probe hören</button></div><p class="sh-note">Die Stimme kommt von deinem Gerät. Am natürlichsten klingen Stimmen mit „Natural“, „Online“ oder „Premium“ im Namen.</p>';
+  }
   function openSettings() {
     var old = document.querySelector('.sheet'); if (old) old.remove();
     var d = getDone(), n = D.lessons.filter(function (l) { return d[l.id]; }).length, last = lastPos();
@@ -525,6 +741,7 @@
       row('Tempo beim Anhören', seg('rate', [['1', 'Normal'], ['0.75', 'Langsam'], ['0.5', 'Sehr langsam']], rate)) +
       row('Aufnahme wiederholen', seg('loop', [['0', 'Aus'], ['1', 'An']], loopPref ? '1' : '0')) +
       row('Farben im Koran', seg('tj', [['0', 'Schlicht'], ['1', 'Tajwīd-Farben']], PREF.tj ? '1' : '0')) +
+      (TTS.ok ? row('Deutsche Vorlesestimme', voiceSel()) : '') +
       '<div class="sh-sec"><b>Dein Fortschritt</b><div class="progress"><i style="width:' + Math.round(100 * n / D.lessons.length) + '%"></i></div>' +
       '<p>' + n + ' von ' + D.lessons.length + ' Lektionen abgehakt.' + (last ? ' Zuletzt: ' + (last.L.id ? 'Lektion ' + last.L.id : 'Einleitung') + ', Schritt ' + (last.s + 1) + ' von ' + last.n + '.' : '') + '</p>' +
       (last ? '<a class="sh-btn" href="l/' + last.L.id + '/">Dort weiter lernen</a>' : '') +
@@ -532,9 +749,12 @@
       '<a class="sh-big" href="iqra/"><span><b>Arabisch KI-Lehrer</b><small>Arabisch sprechen üben, im Gespräch</small></span><span aria-hidden="true">›</span></a>' +
       '<p class="sh-foot">Rezitation: Maḥmūd Khalīl al-Ḥuṣarī. Alles wird nur auf diesem Gerät gespeichert.</p></div>';
     document.body.appendChild(v);
+    var vsel = v.querySelector('#set-voice');
+    if (vsel) vsel.onchange = function () { store('elifba-voice', vsel.value); TTS.test(); };
     v.onclick = function (ev) {
       var t = ev.target;
       if (t === v || t.closest('.sh-x')) { v.remove(); return; }
+      if (t.id === 'set-vtest') { TTS.test(); return; }
       var b = t.closest('.seg button');
       if (b) {
         var name = b.parentNode.dataset.name, val = b.dataset.v;
@@ -555,51 +775,332 @@
     };
   }
 
-  /* ---------- Koran: Sure in der Schrift des Heftes, Vers für Vers antippbar ---------- */
-  var DE_SLUG = { 36: 'yasin' };
-  function koranPage() {
-    var n = 36, K = (window.KORAN || {})[n];
-    document.title = 'Koran · ' + sname(n) + ' · Elif Ba Ikra';
-    if (!K) { app.innerHTML = '<div class="stale"><b>Der Koran-Text fehlt.</b> Beim Hochladen auf GitHub muss auch der Ordner „koran“ mit hochgeladen werden.</div>'; return; }
-    function word(w) {
-      var W = (w[0] + 0.08).toFixed(3), o = '<svg class="kw" viewBox="-0.04 -1.25 ' + W + ' 2.05" style="width:' + W + 'em" aria-hidden="true">';
-      for (var i = 1; i < w.length; i += 4) o += '<use href="#kg' + w[i] + '" transform="translate(' + w[i + 1] + ' ' + w[i + 2] + ') scale(1 -1)"' + (w[i + 3] ? ' class="c' + w[i + 3] + '"' : '') + '/>';
-      return o + '</svg>';
+  /* ---------- Koran: Seiten wie im Madinah-Mushaf (King-Fahd-Druckerei, 15 Zeilen), Seite für Seite umblättern ---------- */
+  var KSETS = {
+    '30': { from: 582, to: 604, file: 'koran/m30.js', name: '30. Juz · ʿAmma' },
+    '36': { from: 440, to: 445, file: 'koran/m36.js', name: 'Yā-Sīn' }
+  };
+  // erste Seite und Zahl der Verse je Sure (aus den Seitendaten)
+  var KSURA = {"35":[440,45],"36":[440,83],"78":[582,40],"79":[583,46],"80":[585,42],"81":[586,29],"82":[587,19],"83":[587,36],"84":[589,25],"85":[590,22],"86":[591,17],"87":[591,19],"88":[592,26],"89":[593,30],"90":[594,20],"91":[595,15],"92":[595,21],"93":[596,11],"94":[596,8],"95":[597,8],"96":[597,19],"97":[598,5],"98":[598,8],"99":[599,8],"100":[599,11],"101":[600,11],"102":[600,8],"103":[601,3],"104":[601,9],"105":[601,5],"106":[602,4],"107":[602,7],"108":[602,3],"109":[603,6],"110":[603,3],"111":[603,5],"112":[604,4],"113":[604,5],"114":[604,6]};
+  var KNAME_AR = { 36: 'يسٓ', 78: 'النَّبَإِ', 79: 'النَّازِعَاتِ', 80: 'عَبَسَ', 81: 'التَّكْوِيرِ', 82: 'الانْفِطَارِ', 83: 'المُطَفِّفِينَ', 84: 'الانْشِقَاقِ', 85: 'البُرُوجِ', 86: 'الطَّارِقِ', 87: 'الأَعْلَى', 88: 'الغَاشِيَةِ', 89: 'الفَجْرِ', 90: 'البَلَدِ', 91: 'الشَّمْسِ', 92: 'اللَّيْلِ', 93: 'الضُّحَى', 94: 'الشَّرْحِ', 95: 'التِّينِ', 96: 'العَلَقِ', 97: 'القَدْرِ', 98: 'البَيِّنَةِ', 99: 'الزَّلْزَلَةِ', 100: 'العَادِيَاتِ', 101: 'القَارِعَةِ', 102: 'التَّكَاثُرِ', 103: 'العَصْرِ', 104: 'الهُمَزَةِ', 105: 'الفِيلِ', 106: 'قُرَيْشٍ', 107: 'المَاعُونِ', 108: 'الكَوْثَرِ', 109: 'الكَافِرُونَ', 110: 'النَّصْرِ', 111: 'المَسَدِ', 112: 'الإِخْلَاصِ', 113: 'الفَلَقِ', 114: 'النَّاسِ' };
+  var KAUDIO = 'https://everyayah.com/data/Ibrahim_Akhdar_32kbps/', KREC = 'Ibrāhīm al-Akhḍar';
+  function kUrl(s, a) { return KAUDIO + pad(s, 3) + pad(a, 3) + '.mp3'; }
+  function kSetOf(p) { for (var k in KSETS) if (p >= KSETS[k].from && p <= KSETS[k].to) return k; return null; }
+  function kRef(s, a) { return sname(s) + ' ' + s + ':' + a; }
+  function kGet(k, def) { try { return JSON.parse(store(k) || 'null') || def; } catch (e) { return def; } }
+  function kMarks() { return kGet('elifba-k-marks', []); }
+  function kSaveMarks(m) { store('elifba-k-marks', JSON.stringify(m)); }
+
+  var kLoading = {};
+  function kLoad(set, cb) {
+    var M = window.MUSHAF || {};
+    if (M[set]) return kFonts(set, cb);
+    if (!kLoading[set]) {
+      kLoading[set] = [];
+      var sc = document.createElement('script'); sc.src = KSETS[set].file + '?v=m1';
+      sc.onload = function () { var l = kLoading[set]; kLoading[set] = null; kFonts(set, function () { l.forEach(function (f) { f(true); }); }); };
+      sc.onerror = function () { var l = kLoading[set]; kLoading[set] = null; l.forEach(function (f) { f(false); }); };
+      document.head.appendChild(sc);
     }
-    var defs = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>' + Object.keys(K.glyphs).map(function (g) { return '<path id="kg' + g + '" d="' + K.glyphs[g] + '"/>'; }).join('') + '</defs></svg>' +
-      '<style>' + K.pal.map(function (c, i) { return i > 1 ? 'html.tj .ktext .c' + i + '{fill:' + c + '}' : ''; }).join('') + '</style>';
-    var h = '<div class="khead"><h1>Koran</h1><p class="hint">Sure ' + n + ' · ' + esc(sname(n)) + ' · ' + K.verses.length + ' Verse. Tipp auf eine Versnummer, dann hörst du genau diesen Vers.</p></div>' + defs +
-      '<div class="mushafw kor"><div class="mh">' +
-      '<button class="surah-play" id="k-all"><span class="play" aria-hidden="true">▶</span> Ganze Sure</button>' +
-      '<span class="quran">سُورَةُ يٰسٓ</span>' +
-      '<a class="kde" href="https://derkoran.com/lesen/' + DE_SLUG[n] + '" target="_blank" rel="noopener">Deutsch</a></div>' +
-      '<div class="ktext" dir="rtl"><div class="kbas">' + K.basmala.map(word).join(' ') + '</div><div class="kflow">' +
-      K.verses.map(function (v, i) {
-        return '<span class="ky" data-v="' + (i + 1) + '">' + v.map(word).join(' ') + ' <button class="kvn" data-v="' + (i + 1) + '" aria-label="Vers ' + (i + 1) + ' anhören">' + arnum(i + 1) + '</button></span>';
-      }).join(' ') + '</div></div></div>' +
-      '<footer>Schrift und Text aus deinem Koran-PDF (dieselbe Schrift wie im Heft). Rezitation: Maḥmūd Khalīl al-Ḥuṣarī. Übersetzung: derkoran.com</footer>';
+    kLoading[set].push(cb);
+  }
+  var kFontDone = {};
+  function kFonts(set, cb) {
+    var M = window.MUSHAF[set], css = '', jobs = [];
+    Object.keys(M.fonts).forEach(function (p) {
+      if (kFontDone[p]) { jobs.push(kFontDone[p]); return; }
+      var b = atob(M.fonts[p]), u = new Uint8Array(b.length);
+      for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+      var ff = new FontFace('mp' + p, u.buffer);
+      document.fonts.add(ff);
+      kFontDone[p] = ff.load().catch(function () {});
+      jobs.push(kFontDone[p]);
+      // Farben: Tajwīd-Farben der Druckerei, oder schlicht in Schriftfarbe. Dunkel: Palette 1 der Schrift.
+      var plain = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 15];
+      css += '@font-palette-values --k' + p + '{font-family:mp' + p + ';base-palette:0}' +
+        '@font-palette-values --kd' + p + '{font-family:mp' + p + ';base-palette:1}' +
+        '@font-palette-values --ks' + p + '{font-family:mp' + p + ';base-palette:0;override-colors:' + plain.map(function (i) { return i + ' #111111'; }).join(',') + ',12 #ffffff}' +
+        '@font-palette-values --ksd' + p + '{font-family:mp' + p + ';base-palette:1;override-colors:' + plain.map(function (i) { return i + ' #f2f2f2'; }).join(',') + ',12 #000000}' +
+        '.mp' + p + '{font-family:mp' + p + ';font-palette:--ks' + p + '}html.dark .mp' + p + '{font-palette:--ksd' + p + '}' +
+        'html.tj .mp' + p + '{font-palette:--k' + p + '}html.dark.tj .mp' + p + '{font-palette:--kd' + p + '}';
+    });
+    if (css) { var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); }
+    Promise.all(jobs).then(function () { cb(true); });
+  }
+
+  var K = { set: null, page: 0, sel: null, mode: null, list: null, idx: -1, max: 16.9 };
+  function kPageAyahs(p) {
+    var out = [], seen = {}, L = window.MUSHAF[kSetOf(p)].pages[p];
+    L.forEach(function (l) { if (l[0] === 'l') l[1].forEach(function (t) { var k = t[1] + ':' + t[2]; if (!seen[k]) { seen[k] = 1; out.push([t[1], t[2]]); } }); });
+    return out;
+  }
+  function kPageOf(s, a) {
+    var p0 = KSURA[s] ? KSURA[s][0] : 0, set = kSetOf(p0); if (!set) return 0;
+    for (var p = p0; p <= KSETS[set].to; p++) { var A = kPageAyahs(p); for (var i = 0; i < A.length; i++) if (A[i][0] === s && A[i][1] === a) return p; }
+    return 0;
+  }
+  function kPageSuras(p) { var o = []; kPageAyahs(p).forEach(function (x) { if (o.indexOf(x[0]) < 0) o.push(x[0]); }); return o; }
+  function kSave() { if (K.page) store('elifba-k', JSON.stringify({ p: K.page, s: K.sel ? K.sel[0] : 0, a: K.sel ? K.sel[1] : 0 })); }
+
+  function kLine(l, p) {
+    if (l[0] === 'h') return '<div class="ml mh-s"><button class="ksura" data-s="' + l[1] + '" aria-label="Sure ' + esc(sname(l[1])) + ' anhören"><span class="ar">سُورَةُ ' + (KNAME_AR[l[1]] || '') + '</span></button></div>';
+    if (l[0] === 'b') return '<div class="ml mb-s"><button class="kbas mp1" data-s="' + l[1] + '" aria-label="Basmala anhören">' + window.MUSHAF[K.set].basmala.map(function (w) { return '<span>' + w + '</span>'; }).join('') + '</button></div>';
+    var short = l[2] < K.max * 0.8;
+    return '<div class="ml' + (short ? ' short' : '') + '">' + l[1].map(function (t) {
+      return '<span class="t' + (t[3] ? ' e' : '') + '" data-a="' + t[1] + ':' + t[2] + '">' + t[0] + '</span>';
+    }).join('') + '</div>';
+  }
+  function kFit() {
+    var pg = app.querySelector('.mpage'); if (!pg) return;
+    var w = pg.parentNode.clientWidth - 2 * 12, top = document.querySelector('.top');
+    var hAvail = window.innerHeight - (top ? top.offsetHeight : 0) - 190;
+    var fw = w / K.max, fh = hAvail / (15 * 1.8);
+    pg.style.setProperty('--kw', K.max.toFixed(3));
+    pg.style.fontSize = Math.max(12, Math.min(fw, Math.max(26, fh), 44)).toFixed(2) + 'px';
+  }
+  window.addEventListener('resize', kFit);
+
+  function kTitle(p) {
+    var su = kPageSuras(p).filter(function (s) { return KSURA[s] && KSURA[s][0] <= p; });
+    return su.map(sname).join(' · ');
+  }
+  function kRender(p, dir) {
+    K.page = p; var set = K.set, S = KSETS[set];
+    var L = window.MUSHAF[set].pages[p];
+    var h = '<div class="kbar"><a class="kback" href="koran/#" aria-label="Zur Übersicht">‹ Übersicht</a>' +
+      '<div class="ktitle"><b>' + esc(kTitle(p)) + '</b><small>Seite ' + p + ' · Juz ' + (p >= 582 ? 30 : p >= 442 ? 23 : 22) + '</small></div>' +
+      '<button class="tb' + (PREF.tj ? ' on' : '') + '" id="k-col" aria-pressed="' + PREF.tj + '">Tajwīd-Farben</button></div>' +
+      '<div class="ktools"><button class="kbtn" id="k-page"><span class="play" aria-hidden="true">▶</span> Seite anhören</button>' +
+      '<button class="kbtn" id="k-sura"><span class="play" aria-hidden="true">▶</span> Sure anhören</button></div>' +
+      '<div class="mwrap"><div class="mpage' + (dir ? ' turn' + (dir > 0 ? 'n' : 'p') : '') + '" dir="rtl" lang="ar">' + L.map(function (l) { return kLine(l, p); }).join('') +
+      '<div class="mno">' + arnum(p) + '</div></div></div>' +
+      '<div class="knav"><button class="kpn" id="k-next"' + (p >= S.to ? ' disabled' : '') + '>‹ Nächste</button>' +
+      '<button class="kpos" id="k-pos" aria-label="Seite wählen">' + p + ' <small>/ ' + S.to + '</small></button>' +
+      '<button class="kpn" id="k-prev"' + (p <= S.from ? ' disabled' : '') + '>Vorherige ›</button></div>' +
+      '<p class="hint kh">Tipp auf einen Vers, dann kannst du ihn anhören und markieren. Zum Umblättern nach rechts wischen.</p>';
     app.innerHTML = h;
-    function hl(v, scroll) {
-      [].forEach.call(app.querySelectorAll('.ky.on'), function (x) { x.classList.remove('on'); });
-      var el = v > 0 && app.querySelector('.ky[data-v="' + v + '"]'); if (!el) return;
-      el.classList.add('on');
-      if (scroll) { var r = el.getBoundingClientRect(); if (r.top < 90 || r.bottom > window.innerHeight - 190) window.scrollTo({ top: r.top + window.scrollY - window.innerHeight * 0.3, behavior: 'smooth' }); }
+    app.querySelector('.mpage').className += ' mp' + p;
+    kFit(); kPaint(); kSave();
+    document.title = 'Koran · Seite ' + p + ' · Elif Ba Ikra';
+    if (history.replaceState) history.replaceState(null, '', '#p' + p);
+  }
+  function kPaint() {
+    var marks = kMarks(), sel = K.sel ? K.sel[0] + ':' + K.sel[1] : '', pl = K.list && K.idx >= 0 && K.list[K.idx] && !K.list[K.idx].bas ? K.list[K.idx].s + ':' + K.list[K.idx].a : '';
+    [].forEach.call(app.querySelectorAll('.mpage .t'), function (el) {
+      var a = el.dataset.a;
+      el.classList.toggle('sel', a === sel); el.classList.toggle('pl', a === pl); el.classList.toggle('mk', marks.indexOf(a) > -1);
+    });
+    var basPl = K.list && K.idx >= 0 && K.list[K.idx] && K.list[K.idx].bas ? K.list[K.idx].s : 0;
+    [].forEach.call(app.querySelectorAll('.kbas'), function (el) { el.classList.toggle('pl', +el.dataset.s === basPl); });
+    kBar();
+  }
+  function kGo(p, dir) {
+    var S = KSETS[K.set]; if (p < S.from || p > S.to || p === K.page) return;
+    kRender(p, dir); window.scrollTo(0, 0);
+  }
+
+  /* Abspielen: Liste aus Versen; vor Vers 1 einer Sure die Basmala (eigene Aufnahme 1:1) */
+  function kItems(from, untilS, untilA, withBas) {
+    var out = [], s = from[0], a = from[1];
+    while (true) {
+      if (!KSURA[s] || a > KSURA[s][1]) break;
+      if (a === 1 && withBas && s !== 9 && s !== 1) out.push({ bas: true, s: s });
+      out.push({ s: s, a: a });
+      if (s === untilS && a === untilA) break;
+      a++; if (a > KSURA[s][1]) { if (untilS === s) break; s++; a = 1; if (!KSURA[s]) break; }
     }
-    app.querySelector('.ktext').onclick = function (ev) {
-      var b = ev.target.closest('.kvn'); if (!b) return;
-      var v = +b.dataset.v, was = current === b && !audio.paused;
-      play([ayahUrl(n, v)], sname(n) + ' ' + n + ':' + v, 'Maḥmūd Khalīl al-Ḥuṣarī', b);
-      hl(was ? 0 : v);
+    return out;
+  }
+  function kStart(list, label) {
+    K.list = list; K.idx = 0; K.label = label;
+    var urls = list.map(function (x) { return x.bas ? kUrl(1, 1) : kUrl(x.s, x.a); });
+    current = null;
+    play(urls, '', KREC, document.createElement('span'));
+    onStep = function (left) {
+      if (left < 0) { K.idx = -1; kPaint(); return; }
+      K.idx = list.length - 1 - left; kFollow();
     };
-    var all = document.getElementById('k-all');
-    all.onclick = function () {
-      var was = current === all && !audio.paused, urls = [ayahUrl(1, 1)], tot = K.verses.length;
-      for (var v = 1; v <= tot; v++) urls.push(ayahUrl(n, v));
-      play(urls, sname(n), 'Ganze Sure, Vers für Vers · Maḥmūd Khalīl al-Ḥuṣarī', all);
-      if (was) return;
-      hl(0);
-      onStep = function (left) { if (left < 0) { hl(0); return; } var v = tot - left; hl(v, true); plT.textContent = sname(n) + ' ' + n + ':' + v; };
+    kFollow();
+  }
+  function kFollow() {
+    var x = K.list && K.list[K.idx]; if (!x) { kPaint(); return; }
+    if (!x.bas) { K.sel = [x.s, x.a]; var p = kPageOf(x.s, x.a); if (p && p !== K.page) kRender(p, p > K.page ? 1 : -1); }
+    else { var p2 = KSURA[x.s] && KSURA[x.s][0]; if (p2 && p2 !== K.page) kRender(p2, 1); }
+    kSave(); kPaint();
+    var el = app.querySelector('.mpage .pl');
+    if (el) { var r = el.getBoundingClientRect(); if (r.top < 70 || r.bottom > window.innerHeight - 170) window.scrollTo({ top: r.top + window.scrollY - window.innerHeight * 0.35, behavior: 'smooth' }); }
+  }
+  function kStop() { audio.pause(); K.list = null; K.idx = -1; onStep = null; }
+  function kOne(s, a) { kStart([{ s: s, a: a }], kRef(s, a)); }
+
+  /* Leiste unten: Vers ausgewählt oder Wiedergabe läuft */
+  function kBar() {
+    var bar = document.getElementById('kplayer'); if (!bar) return;
+    var x = K.sel, playing = K.list && K.idx >= 0;
+    if (!x && !playing) { bar.hidden = true; return; }
+    bar.hidden = false;
+    var cur = playing ? K.list[K.idx] : null;
+    var t = cur && cur.bas ? 'Basmala · vor ' + sname(cur.s) : x ? kRef(x[0], x[1]) : '';
+    var marked = x && kMarks().indexOf(x[0] + ':' + x[1]) > -1;
+    bar.querySelector('.kp-t').textContent = t;
+    bar.querySelector('.kp-s').textContent = playing ? (K.list.length > 1 ? K.label + ' · ' : '') + KREC + (audio.paused ? ' · pausiert' : '') : 'Vers ausgewählt';
+    var pb = bar.querySelector('#kp-play'); pb.textContent = playing && !audio.paused ? '❚❚' : '▶'; pb.setAttribute('aria-label', playing && !audio.paused ? 'Pause' : 'Vers anhören');
+    var mb = bar.querySelector('#kp-mark'); mb.classList.toggle('on', !!marked); mb.textContent = marked ? '★ Markiert' : '☆ Markieren'; mb.disabled = !x;
+    bar.querySelector('#kp-rate').textContent = (rate === 1 ? '1' : rate === 0.75 ? '¾' : '½') + '×';
+  }
+  function kNeighbour(d) {
+    var x = K.sel; if (!x) return null;
+    var s = x[0], a = x[1] + d;
+    if (a < 1) { s--; if (!KSURA[s] || !kSetOf(KSURA[s][0])) return null; a = KSURA[s][1]; }
+    if (a > KSURA[s][1]) { s++; a = 1; }
+    if (!KSURA[s] || !kPageOf(s, a)) return null;
+    return [s, a];
+  }
+  function kSelect(s, a, andPlay) {
+    K.sel = [s, a]; var p = kPageOf(s, a);
+    if (p && p !== K.page) kRender(p, p > K.page ? 1 : -1);
+    kSave(); kPaint();
+    if (andPlay) kOne(s, a);
+  }
+
+  function kBindPage() {
+    app.onclick = function (ev) {
+      var t = ev.target.closest('.mpage .t');
+      if (t) { var k = t.dataset.a.split(':'); var same = K.sel && K.sel[0] === +k[0] && K.sel[1] === +k[1]; kSelect(+k[0], +k[1], false); if (same) kOne(+k[0], +k[1]); return; }
+      var hs = ev.target.closest('.ksura'); if (hs) { var s = +hs.dataset.s; kStart(kItems([s, 1], s, KSURA[s][1], true), 'Ganze Sure ' + sname(s)); return; }
+      var bs = ev.target.closest('.kbas'); if (bs) { K.sel = null; kStart([{ bas: true, s: +bs.dataset.s }], 'Basmala'); return; }
+      var id = ev.target.closest('button, a') && ev.target.closest('button, a').id;
+      if (id === 'k-next') kGo(K.page + 1, 1);
+      else if (id === 'k-prev') kGo(K.page - 1, -1);
+      else if (id === 'k-col') { PREF.tj = !PREF.tj; store('elifba-tj', PREF.tj ? '1' : '0'); applyPrefs(); var b = document.getElementById('k-col'); b.classList.toggle('on', PREF.tj); b.setAttribute('aria-pressed', String(PREF.tj)); }
+      else if (id === 'k-page') { var A = kPageAyahs(K.page); kStart(kItems(A[0], A[A.length - 1][0], A[A.length - 1][1], true), 'Seite ' + K.page); }
+      else if (id === 'k-sura') {
+        var su = K.sel ? K.sel[0] : kPageSuras(K.page).filter(function (s) { return KSURA[s][0] === K.page; })[0] || kPageSuras(K.page)[0];
+        if (!kPageOf(su, 1)) su = kPageSuras(K.page).filter(function (s) { return kPageOf(s, 1); })[0];
+        if (!su) return;
+        kStart(kItems([su, 1], su, KSURA[su][1], true), 'Ganze Sure ' + sname(su));
+      }
+      else if (id === 'k-pos') kPicker();
     };
+  }
+  function kPicker() {
+    var S = KSETS[K.set], v = document.createElement('div'); v.className = 'steplist';
+    var h = '<div class="sl-in"><b>Seite wählen · ' + esc(S.name) + '</b><div class="kgrid">';
+    for (var p = S.from; p <= S.to; p++) h += '<button data-p="' + p + '"' + (p === K.page ? ' class="on"' : '') + '><b>' + p + '</b><small>' + esc(kTitle(p)) + '</small></button>';
+    v.innerHTML = h + '</div><button class="sl-x">Schließen</button></div>';
+    document.body.appendChild(v);
+    v.onclick = function (ev) {
+      var b = ev.target.closest('button[data-p]');
+      if (b) { v.remove(); kGo(+b.dataset.p, +b.dataset.p > K.page ? 1 : -1); }
+      else if (ev.target === v || ev.target.classList.contains('sl-x')) v.remove();
+    };
+  }
+  function kPlayerEl() {
+    var bar = document.getElementById('kplayer'); if (bar) return bar;
+    bar = document.createElement('div'); bar.id = 'kplayer'; bar.className = 'kplayer'; bar.hidden = true;
+    bar.innerHTML = '<div class="kp-top"><div class="kp-i"><span class="kp-t"></span><span class="kp-s"></span></div>' +
+      '<button class="kp-c" id="kp-mark">☆ Markieren</button><button class="kp-c kp-x" id="kp-x" aria-label="Schließen">✕</button></div>' +
+      '<div class="kp-row"><button class="kp-b" id="kp-prev" aria-label="Vorheriger Vers">⏮</button>' +
+      '<button class="kp-b" id="kp-again" aria-label="Vers noch einmal">↺</button>' +
+      '<button class="kp-b kp-main" id="kp-play" aria-label="Vers anhören">▶</button>' +
+      '<button class="kp-b" id="kp-next" aria-label="Nächster Vers">⏭</button>' +
+      '<button class="kp-b kp-txt" id="kp-from" aria-label="Ab hier weiter anhören">Ab hier</button>' +
+      '<button class="kp-b kp-txt" id="kp-rate" aria-label="Tempo">1×</button></div>';
+    document.body.appendChild(bar);
+    bar.onclick = function (ev) {
+      var b = ev.target.closest('button'); if (!b) return;
+      var playing = K.list && K.idx >= 0, x = K.sel;
+      if (b.id === 'kp-x') { kStop(); K.sel = null; kPaint(); kSave(); }
+      else if (b.id === 'kp-play') {
+        if (playing) { if (audio.paused) audio.play(); else audio.pause(); }
+        else if (x) kOne(x[0], x[1]);
+      }
+      else if (b.id === 'kp-again') { if (playing && K.list.length === 1 || !playing) { if (x) kOne(x[0], x[1]); } else { audio.currentTime = 0; audio.play(); } }
+      else if (b.id === 'kp-prev' || b.id === 'kp-next') {
+        var n = kNeighbour(b.id === 'kp-next' ? 1 : -1); if (!n) return;
+        var cont = playing && K.list.length > 1;
+        kSelect(n[0], n[1], false);
+        if (cont) kStart(kItems(n, n[0], KSURA[n[0]][1], true), 'Ab ' + kRef(n[0], n[1]));
+        else if (playing) kOne(n[0], n[1]);
+      }
+      else if (b.id === 'kp-from') { if (x) kStart(kItems(x, x[0], KSURA[x[0]][1], false), 'Ab ' + kRef(x[0], x[1])); }
+      else if (b.id === 'kp-mark') {
+        if (!x) return; var m = kMarks(), k = x[0] + ':' + x[1], i = m.indexOf(k);
+        if (i > -1) m.splice(i, 1); else m.push(k);
+        kSaveMarks(m); kPaint();
+      }
+      else if (b.id === 'kp-rate') { setRate(rate === 1 ? 0.75 : rate === 0.75 ? 0.5 : 1); kBar(); }
+    };
+    ['play', 'pause', 'ended'].forEach(function (e) { audio.addEventListener(e, function () { if (view === 'koran') setTimeout(kBar, 0); }); });
+    return bar;
+  }
+  function kSwipe() {
+    var sx = 0, sy = 0, st = 0;
+    app.addEventListener('touchstart', function (e) { if (e.touches.length !== 1 || !e.target.closest('.mwrap')) { st = 0; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now(); }, { passive: true });
+    app.addEventListener('touchend', function (e) {
+      if (!st || !K.page) return; var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; st = 0;
+      // wie in einem arabischen Buch: nach rechts wischen = nächste Seite
+      if (Math.abs(dx) > 60 && Math.abs(dy) < 50) kGo(K.page + (dx > 0 ? 1 : -1), dx > 0 ? 1 : -1);
+    }, { passive: true });
+    document.addEventListener('keydown', function (e) {
+      if (!K.page || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+      if (e.key === 'ArrowLeft') kGo(K.page + 1, 1); else if (e.key === 'ArrowRight') kGo(K.page - 1, -1);
+    });
+  }
+
+  function kHome() {
+    K.page = 0; K.sel = null; kBar();
+    var last = kGet('elifba-k', null), marks = kMarks();
+    var h = '<div class="khead"><h1>Koran</h1><p class="hint">Seiten wie im Madinah-Mushaf. Tipp auf eine Sure oder Seite.</p></div>';
+    if (last && last.p) h += '<a class="resume" href="koran/#p' + last.p + '"><b>Weiterlesen</b><small>Seite ' + last.p + (last.s ? ' · ' + esc(kRef(last.s, last.a)) : '') + '</small></a>';
+    h += '<section class="ksec"><h2>30. Juz · Seite 582 bis 604</h2><div class="seg ktabs" data-name="ktab"><button data-v="s" class="on">Suren</button><button data-v="p">Seiten</button></div><ul class="list ksl">';
+    for (var s = 78; s <= 114; s++) h += '<li><a href="koran/#s' + s + '"><span class="num">' + s + '</span><span class="t">' + esc(sname(s)) + '<small>' + KSURA[s][1] + ' Verse · Seite ' + KSURA[s][0] + '</small></span><span class="ar">' + KNAME_AR[s] + '</span></a></li>';
+    h += '</ul><div class="kgrid kpl" hidden>';
+    for (var p = 582; p <= 604; p++) h += '<a href="koran/#p' + p + '"><b>' + p + '</b><small></small></a>';
+    h += '</div></section><section class="ksec"><h2>Weitere Sure</h2><ul class="list"><li><a href="koran/#s36"><span class="num">36</span><span class="t">Yā-Sīn<small>83 Verse · Seite 440 bis 445</small></span><span class="ar">' + KNAME_AR[36] + '</span></a></li></ul></section>';
+    if (marks.length) h += '<section class="ksec"><h2>Markierte Verse</h2><ul class="list">' + marks.map(function (k) { var x = k.split(':'); return '<li><a href="koran/#a' + k + '"><span class="num">★</span><span class="t">' + esc(kRef(+x[0], +x[1])) + '<small></small></span></a></li>'; }).join('') + '</ul></section>';
+    h += '<footer>Mushaf-Seiten: Schrift der King-Fahd-Druckerei Medina (Ausgabe 1441, Tajwīd-Fassung über das Quranic Universal Library). Rezitation: ' + KREC + ' (everyayah.com).</footer>';
+    app.innerHTML = h; app.onclick = null;
+    document.title = 'Koran · Elif Ba Ikra';
+    var tabs = app.querySelector('.ktabs');
+    tabs.onclick = function (ev) {
+      var b = ev.target.closest('button'); if (!b) return;
+      [].forEach.call(tabs.children, function (x) { x.classList.toggle('on', x === b); });
+      app.querySelector('.ksl').hidden = b.dataset.v !== 's'; app.querySelector('.kpl').hidden = b.dataset.v !== 'p';
+      store('elifba-ktab', b.dataset.v);
+    };
+    if (store('elifba-ktab') === 'p') tabs.children[1].click();
+    // Seitenraster: Surennamen auf der Seite
+    var g = app.querySelectorAll('.kpl a small');
+    for (var i = 0; i < g.length; i++) { var pp = 582 + i, names = []; for (var ss in KSURA) if (+ss >= 78 && KSURA[ss][0] === pp) names.push(sname(+ss)); g[i].textContent = names.join(' · ') || '·'; }
+    // markierte Verse: Seite nachtragen, sobald die Daten da sind
+    if (marks.length) marks.forEach(function (k, i) {
+      var x = k.split(':'), set = kSetOf(KSURA[x[0]] ? KSURA[x[0]][0] : 0); if (!set) return;
+      kLoad(set, function (ok) { if (!ok || K.page) return; var el = app.querySelectorAll('.ksec:last-of-type small')[i]; if (el) el.textContent = 'Seite ' + kPageOf(+x[0], +x[1]); });
+    });
+  }
+  function koranRoute() {
+    var hsh = (location.hash || '').slice(1), m, p = 0, sel = null;
+    if ((m = /^p(\d+)$/.exec(hsh))) p = +m[1];
+    else if ((m = /^s(\d+)$/.exec(hsh)) && KSURA[m[1]]) p = KSURA[m[1]][0];
+    else if ((m = /^a(\d+):(\d+)$/.exec(hsh)) && KSURA[m[1]]) { sel = [+m[1], +m[2]]; p = KSURA[m[1]][0]; }
+    var set = kSetOf(p);
+    if (!set) { kHome(); return; }
+    app.innerHTML = '<p class="hint kload">Seite wird geladen …</p>';
+    kLoad(set, function (ok) {
+      if (!ok) { app.innerHTML = '<div class="stale"><b>Die Koran-Seiten fehlen.</b> Beim Hochladen auf GitHub muss der Ordner „koran“ mit allen Dateien dabei sein.</div>'; return; }
+      K.set = set; K.max = 0;
+      var P = window.MUSHAF[set].pages; Object.keys(P).forEach(function (q) { P[q].forEach(function (l) { if (l[0] === 'l' && l[2] > K.max) K.max = l[2]; }); });
+      if (m && /^s/.test(hsh)) { var s = +m[1]; p = kPageOf(s, 1) || p; }
+      if (sel) p = kPageOf(sel[0], sel[1]) || p;
+      K.sel = sel; kBindPage(); kRender(p, 0);
+    });
+  }
+  function koranPage() {
+    kPlayerEl(); kSwipe();
+    document.getElementById('player').classList.add('koff');
+    window.addEventListener('hashchange', function () { if (!/^#p\d+$/.test(location.hash) || +location.hash.slice(2) !== K.page) koranRoute(); });
+    koranRoute();
   }
 
   /* ---------- Sprung zu einer Übung (QR-Code neben der Aufgabe im Heft) ---------- */
@@ -611,7 +1112,7 @@
     if (el.classList.contains('hs')) el.classList.add('hl');
     setTimeout(function () { scrollToId(el.id); }, 120);
   }
-  window.addEventListener('hashchange', function () { exercise(); });
+  window.addEventListener('hashchange', function () { if (view !== 'koran') exercise(); });
 
   /* ---------- Übersicht ---------- */
   function overview() {
